@@ -1,0 +1,30 @@
+# CODEOWNERS file
+# This file defines who is responsible for code in this repository.
+# More info: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+*       @datalablife
+
+# GitHub Actions workflows
+/.github/workflows/     @datalablife
+
+# CI/CD and deployment scripts
+/scripts/deploy/        @datalablife
+/scripts/ci/           @datalablife
+
+# Documentation
+/docs/                 @datalablife
+*.md                   @datalablife
+
+# Python source code
+/working/              @datalablife
+/tests/                @datalablife
+
+# Configuration files
+pyproject.toml         @datalablife
+rxconfig.py            @datalablife
+Dockerfile             @datalablife
+docker-compose.yml     @datalablife
+
+# Environment files (require extra review)
+.env*                  @datalablife

@@ -1,0 +1,364 @@
+name: CD - Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**'
+      - '!.github/workflows/cd.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      skip_tests:
+        description: 'Skip tests'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  PYTHON_VERSION: '3.12'
+  NODE_VERSION: '20'
+  COOLIFY_URL: 'https://coolpanel.jackcwf.com'
+
+jobs:
+  # Job 1: Pre-deployment checks
+  pre-deploy:
+    name: Pre-deployment Checks
+    runs-on: ubuntu-latest
+
+    outputs:
+      deploy-env: ${{ steps.determine-env.outputs.environment }}
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine deployment environment
+        id: determine-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=development" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate version tag
+        id: version
+        run: |
+          VERSION=$(date +'%Y%m%d-%H%M%S')-${GITHUB_SHA::7}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Generated version: $VERSION"
+
+      - name: Validate branch
+        run: |
+          CURRENT_BRANCH=${GITHUB_REF#refs/heads/}
+          echo "Current branch: $CURRENT_BRANCH"
+
+          if [ "${{ steps.determine-env.outputs.environment }}" == "production" ]; then
+            if [ "$CURRENT_BRANCH" != "main" ]; then
+              echo "Error: Production deployments must be from main branch"
+              exit 1
+            fi
+          fi
+
+  # Job 2: Run tests (optional)
+  test:
+    name: Run Tests Before Deploy
+    runs-on: ubuntu-latest
+    needs: pre-deploy
+    if: github.event.inputs.skip_tests != 'true'
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          uv sync --extra test
+
+      - name: Run critical tests
+        env:
+          DATABASE_URL: postgresql://testuser:testpass@localhost:5432/testdb
+          TESTING: true
+        run: |
+          source .venv/bin/activate
+          pytest tests/unit/ tests/integration/ -v --maxfail=3
+        timeout-minutes: 10
+
+  # Job 3: Build Docker image
+  build-image:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [pre-deploy, test]
+    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix={{branch}}-
+            type=raw,value=${{ needs.pre-deploy.outputs.version }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            PYTHON_VERSION=${{ env.PYTHON_VERSION }}
+            NODE_VERSION=${{ env.NODE_VERSION }}
+
+  # Job 4: Deploy to Development
+  deploy-development:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: [pre-deploy, build-image]
+    if: needs.pre-deploy.outputs.deploy-env == 'development'
+    environment:
+      name: development
+      url: https://dev.jackcwf.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Coolify (Development)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_DEV_APP_UUID }}
+        run: |
+          chmod +x scripts/deploy/deploy-coolify.sh
+          ./scripts/deploy/deploy-coolify.sh development ${{ needs.pre-deploy.outputs.version }}
+
+      - name: Run health checks
+        run: |
+          chmod +x scripts/deploy/health-check.sh
+          ./scripts/deploy/health-check.sh https://dev.jackcwf.com
+        timeout-minutes: 5
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          echo "Deployment to Development: ${{ job.status }}"
+          echo "Version: ${{ needs.pre-deploy.outputs.version }}"
+
+  # Job 5: Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [pre-deploy, build-image]
+    if: needs.pre-deploy.outputs.deploy-env == 'staging'
+    environment:
+      name: staging
+      url: https://staging.jackcwf.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Coolify (Staging)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_STAGING_APP_UUID }}
+        run: |
+          chmod +x scripts/deploy/deploy-coolify.sh
+          ./scripts/deploy/deploy-coolify.sh staging ${{ needs.pre-deploy.outputs.version }}
+
+      - name: Run smoke tests
+        run: |
+          chmod +x scripts/deploy/smoke-tests.sh
+          ./scripts/deploy/smoke-tests.sh https://staging.jackcwf.com
+        timeout-minutes: 5
+
+      - name: Run health checks
+        run: |
+          chmod +x scripts/deploy/health-check.sh
+          ./scripts/deploy/health-check.sh https://staging.jackcwf.com
+        timeout-minutes: 5
+
+      - name: Notify deployment status
+        if: always()
+        run: |
+          echo "Deployment to Staging: ${{ job.status }}"
+          echo "Version: ${{ needs.pre-deploy.outputs.version }}"
+
+  # Job 6: Deploy to Production (Manual approval required)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [pre-deploy, build-image]
+    if: needs.pre-deploy.outputs.deploy-env == 'production'
+    environment:
+      name: production
+      url: https://jackcwf.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create deployment backup
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_PROD_APP_UUID }}
+        run: |
+          chmod +x scripts/deploy/backup.sh
+          ./scripts/deploy/backup.sh production
+
+      - name: Deploy to Coolify (Production)
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_PROD_APP_UUID }}
+        run: |
+          chmod +x scripts/deploy/deploy-coolify.sh
+          ./scripts/deploy/deploy-coolify.sh production ${{ needs.pre-deploy.outputs.version }}
+
+      - name: Wait for deployment stabilization
+        run: sleep 30
+
+      - name: Run comprehensive health checks
+        run: |
+          chmod +x scripts/deploy/health-check.sh
+          ./scripts/deploy/health-check.sh https://jackcwf.com
+        timeout-minutes: 5
+
+      - name: Run smoke tests
+        run: |
+          chmod +x scripts/deploy/smoke-tests.sh
+          ./scripts/deploy/smoke-tests.sh https://jackcwf.com
+        timeout-minutes: 5
+
+      - name: Monitor post-deployment metrics
+        run: |
+          chmod +x scripts/deploy/monitor-metrics.sh
+          ./scripts/deploy/monitor-metrics.sh https://jackcwf.com
+        timeout-minutes: 3
+        continue-on-error: true
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "✅ Production deployment successful"
+          echo "Version: ${{ needs.pre-deploy.outputs.version }}"
+          echo "URL: https://jackcwf.com"
+
+      - name: Rollback on failure
+        if: failure()
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_PROD_APP_UUID }}
+        run: |
+          echo "❌ Production deployment failed - initiating rollback"
+          chmod +x scripts/deploy/rollback.sh
+          ./scripts/deploy/rollback.sh production
+
+  # Job 7: Post-deployment monitoring
+  post-deploy:
+    name: Post-Deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: [pre-deploy, deploy-development, deploy-staging, deploy-production]
+    if: always() && (needs.deploy-development.result == 'success' || needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine deployed environment
+        id: env-check
+        run: |
+          if [ "${{ needs.deploy-production.result }}" == "success" ]; then
+            echo "url=https://jackcwf.com" >> $GITHUB_OUTPUT
+            echo "env=production" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.deploy-staging.result }}" == "success" ]; then
+            echo "url=https://staging.jackcwf.com" >> $GITHUB_OUTPUT
+            echo "env=staging" >> $GITHUB_OUTPUT
+          else
+            echo "url=https://dev.jackcwf.com" >> $GITHUB_OUTPUT
+            echo "env=development" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Monitor application health (5 minutes)
+        run: |
+          for i in {1..5}; do
+            echo "Health check iteration $i/5"
+            chmod +x scripts/deploy/health-check.sh
+            ./scripts/deploy/health-check.sh ${{ steps.env-check.outputs.url }}
+            sleep 60
+          done
+        timeout-minutes: 6
+        continue-on-error: true
+
+      - name: Generate deployment report
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Parameter | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Environment | ${{ steps.env-check.outputs.env }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Version | ${{ needs.pre-deploy.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| URL | ${{ steps.env-check.outputs.url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Deployed By | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Timestamp | $(date -u +'%Y-%m-%d %H:%M:%S UTC') |" >> $GITHUB_STEP_SUMMARY
