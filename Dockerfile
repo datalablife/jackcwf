@@ -1,93 +1,45 @@
-# Multi-stage Dockerfile for Reflex Application
-# Optimized for production deployment with CI/CD
+# Simplified Dockerfile for Reflex Application with Coolify compatibility
+# This Dockerfile is optimized for Coolify deployment
+# For local development, use: uv sync && uv run reflex run
 
-# Build arguments
 ARG PYTHON_VERSION=3.12
-ARG NODE_VERSION=20
 
-# ============================================
-# Stage 1: Python dependencies builder
-# ============================================
-FROM python:${PYTHON_VERSION}-slim as python-builder
+FROM python:${PYTHON_VERSION}-slim
 
 WORKDIR /app
 
-# Install system dependencies for Python packages
+# Install system dependencies for Python packages and Node.js
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     curl \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
+# Install Node.js for Reflex frontend
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install uv package manager
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.cargo/bin:$PATH"
 
 # Copy dependency files
 COPY pyproject.toml uv.lock ./
 
-# Install Python dependencies
+# Install Python dependencies (non-dev for production)
 RUN uv sync --no-dev
 
-# ============================================
-# Stage 2: Node.js frontend builder
-# ============================================
-FROM node:${NODE_VERSION}-slim as node-builder
-
-WORKDIR /app
-
-# Copy Python environment from previous stage (needed for reflex)
-COPY --from=python-builder /app/.venv /app/.venv
-COPY --from=python-builder /root/.cargo/bin/uv /usr/local/bin/uv
-
-# Copy application files
+# Copy application code
 COPY . .
 
-# Initialize and build Reflex
+# Initialize Reflex and build frontend
 ENV PATH="/app/.venv/bin:$PATH"
-RUN python -m reflex init --loglevel warning
-RUN python -m reflex export --frontend-only --loglevel info
-
-# ============================================
-# Stage 3: Production runtime
-# ============================================
-FROM python:${PYTHON_VERSION}-slim
-
-# Build arguments
-ARG VERSION=latest
-ARG BUILD_DATE
-ARG VCS_REF
-
-# Labels
-LABEL maintainer="jack@example.com"
-LABEL version="${VERSION}"
-LABEL description="Reflex Full-Stack Application"
-LABEL org.opencontainers.image.created="${BUILD_DATE}"
-LABEL org.opencontainers.image.revision="${VCS_REF}"
-
-WORKDIR /app
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y \
-    libpq5 \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Create non-root user
-RUN useradd -m -u 1000 -s /bin/bash appuser && \
-    chown -R appuser:appuser /app
-
-# Copy Python environment
-COPY --from=python-builder --chown=appuser:appuser /app/.venv /app/.venv
-
-# Copy built frontend
-COPY --from=node-builder --chown=appuser:appuser /app/.web /app/.web
-
-# Copy application code
-COPY --chown=appuser:appuser . .
+RUN python -m reflex init --loglevel warning && \
+    python -m reflex export --frontend-only --loglevel info
 
 # Set environment variables
-ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV REFLEX_ENV=production
@@ -100,9 +52,6 @@ EXPOSE 3000 8000
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD curl -f http://localhost:8000/api/health || exit 1
-
-# Switch to non-root user
-USER appuser
 
 # Start application
 CMD ["python", "-m", "reflex", "run", "--env", "production"]
