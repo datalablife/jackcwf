@@ -1,0 +1,25 @@
+# Nixpacks configuration for Reflex application
+# This tells Nixpacks how to properly build and run this Reflex app
+
+[build]
+# Install phase - set up Python environment with uv
+install = "uv sync"
+
+# Build phase - initialize Reflex and export frontend
+build = "python -m reflex init --loglevel warning && python -m reflex export --frontend-only --loglevel info"
+
+# Start command - run Reflex in production mode
+start = "python -m reflex run --env production"
+
+[env]
+# Set Python to not buffer output for real-time logs
+PYTHONUNBUFFERED = "1"
+PYTHONDONTWRITEBYTECODE = "1"
+REFLEX_ENV = "production"
+FRONTEND_PORT = "3000"
+BACKEND_PORT = "8000"
+
+# Expose the ports that Reflex uses
+[ports]
+3000 = "frontend"
+8000 = "backend"
