@@ -19,9 +19,7 @@ assets/
 code_review_crew/
 
 # 项目文档和配置（本地管理）
-# 但允许 CI/CD 脚本和部署文档提交到 Git
-docs/**
-!docs/deployment/  # CI/CD 部署文档需要提交
+docs/
 openspec/
 scripts/**
 !scripts/deploy/    # 部署脚本需要提交
