@@ -1,35 +1,39 @@
-# Nixpacks configuration for Reflex application
-# This tells Nixpacks how to properly build and run this Reflex app
+# Nixpacks configuration for Reflex 0.8.16 application
+# Optimized for Coolify deployment with proper build phases
 
-[build]
-# Install phase - set up Python environment with uv
-install = "uv sync"
+# Setup phase - install system dependencies
+[phases.setup]
+nixPkgs = ["python312", "nodejs_20", "curl", "git"]
 
-# Build phase - initialize Reflex and export frontend
-build = "python -m reflex init --loglevel warning && python -m reflex export --frontend-only --loglevel info"
+# Install phase - Python dependencies
+[phases.install]
+cmds = [
+    # Install uv package manager
+    "curl -LsSf https://astral.sh/uv/install.sh | sh",
+    "export PATH=\"$HOME/.cargo/bin:$PATH\"",
+    # Install Python dependencies (production only)
+    "uv sync --no-dev"
+]
 
-# Start command - run Reflex in production mode with detailed logging
-start = "python -m reflex run --env production --loglevel info"
+# Build phase - compile Reflex frontend
+[phases.build]
+cmds = [
+    # Activate virtual environment
+    "export PATH=\".venv/bin:$PATH\"",
+    # Initialize Reflex (creates .web directory structure)
+    "python -m reflex init --loglevel warning",
+    # Export frontend (compile React app)
+    "python -m reflex export --frontend-only --loglevel info"
+]
 
-[env]
-# Set Python to not buffer output for real-time logs
+# Start command
+[start]
+cmd = "python -m reflex run --env production --loglevel info"
+
+# Environment variables for production
+[variables]
 PYTHONUNBUFFERED = "1"
 PYTHONDONTWRITEBYTECODE = "1"
 REFLEX_ENV = "production"
 FRONTEND_PORT = "3000"
 BACKEND_PORT = "8000"
-
-# Expose the ports that Reflex uses
-[ports]
-3000 = "frontend"
-8000 = "backend"
-
-# Health check configuration
-[health]
-enabled = true
-cmd = "curl -f http://localhost:3000/ || exit 1"
-# Extended start period for Reflex app compilation (120 seconds)
-start_period = 120
-interval = 30
-timeout = 10
-retries = 5

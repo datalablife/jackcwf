@@ -312,6 +312,75 @@ uv add reflex==0.8.16
 reflex --help
 ```
 
+## Coolify 部署
+
+### 快速部署
+
+如果你需要将应用部署到 Coolify，请按照以下步骤：
+
+#### 1. 阅读快速修复指南
+
+```bash
+cat QUICK_FIX_GUIDE.md
+```
+
+这个指南包含了部署到 Coolify 的所有必要步骤（5 分钟）。
+
+#### 2. 提交代码
+
+```bash
+git add .
+git commit -m "Deploy to Coolify"
+git push origin main
+```
+
+#### 3. 在 Coolify 面板配置
+
+访问 https://coolpanel.jackcwf.com，配置：
+
+- **环境变量**: `PYTHONUNBUFFERED`, `REFLEX_ENV`, 等
+- **健康检查**: Initial Delay = 60 秒（关键！）
+- **资源限制**: Memory ≥ 1GB
+
+#### 4. 部署和验证
+
+点击 Deploy 按钮，等待 2-3 分钟，验证应用状态为 `running:healthy`。
+
+### 部署文档索引
+
+| 文档 | 用途 |
+|------|------|
+| **QUICK_FIX_GUIDE.md** | 5 分钟快速部署指南 |
+| **DEPLOYMENT_DIAGNOSIS.md** | 完整的问题诊断和分析 |
+| **COOLIFY_CONFIG.md** | 详细的 Coolify 配置步骤 |
+| **nixpacks.toml** | Nixpacks 构建配置 |
+| **start.sh** | 应用启动脚本 |
+| **scripts/test/test-docker-build.sh** | 本地 Docker 测试 |
+| **scripts/test/test-nixpacks-build.sh** | 本地 Nixpacks 测试 |
+
+### 本地测试部署
+
+在推送到 Coolify 之前，可以本地测试构建：
+
+```bash
+# 测试 Dockerfile 构建
+./scripts/test/test-docker-build.sh
+
+# 测试 Nixpacks 构建（需要先安装 Nixpacks）
+./scripts/test/test-nixpacks-build.sh
+```
+
+### 部署故障排除
+
+如果部署失败，请检查：
+
+1. **容器日志为空** → 阅读 `DEPLOYMENT_DIAGNOSIS.md`
+2. **健康检查失败** → 确认 Initial Delay = 60 秒
+3. **前端 404** → 检查构建日志中的 `reflex export` 步骤
+4. **容器立即退出** → 检查环境变量和依赖安装
+
+详细的故障排除步骤请参考 `DEPLOYMENT_DIAGNOSIS.md`。
+
 ## 资源链接
 
 - [uv 官方文档](https://docs.astral.sh/uv/)
@@ -320,6 +389,7 @@ reflex --help
 - [Coolify 文档](https://coolify.io/docs)
 - [pgvector GitHub](https://github.com/pgvector/pgvector)
 - [Lantern 官方网站](https://lantern.dev/)
+- [Nixpacks 文档](https://nixpacks.com/)
 
 ## 许可证
 
