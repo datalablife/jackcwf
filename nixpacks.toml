@@ -28,8 +28,9 @@ cmds = [
 ]
 
 # Start command
+# Note: Reflex accepts only 'dev' or 'prod', not 'production'
 [start]
-cmd = "python -m reflex run --env production --loglevel info"
+cmd = "python -m reflex run --env prod --loglevel info"
 
 # Environment variables for production
 [variables]
