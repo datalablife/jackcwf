@@ -2,8 +2,9 @@
 # Optimized for Coolify deployment with proper build phases
 
 # Setup phase - install system dependencies
+# unzip is required by Reflex for installing Bun (JavaScript runtime)
 [phases.setup]
-nixPkgs = ["python312", "nodejs_20", "curl", "git"]
+nixPkgs = ["python312", "nodejs_20", "curl", "git", "unzip"]
 
 # Install phase - Python dependencies
 [phases.install]
