@@ -1,34 +1,55 @@
-# 部署指南
+# Coolify 部署文档中心
 
-欢迎来到部署指南！本目录包含所有与应用部署相关的文档。
+**项目**: datalablife/jackcwf (Reflex 0.8.16 全栈应用)
+**平台**: Coolify Self-Hosted
+**最后更新**: 2025-10-30
+**状态**: ✅ 生产环境成功部署
 
-## 📚 指南导航
+---
 
-### 🔄 CI/CD 自动化部署
+## 📋 文档导航
 
-- **[Quick Start Guide (English)](./QUICK_START.md)** - 10分钟快速启动指南
-- **[Complete CI/CD Guide (English)](./ci-cd.md)** - 完整的CI/CD文档
-  - GitHub Actions 工作流
-  - 多环境部署策略
-  - 安全扫描和监控
-  - 故障排除和最佳实践
+本目录包含关于在 Coolify 上部署 Reflex 应用的完整文档。按照以下指南选择合适的文档。
 
-### 🌐 Coolify 部署
+### 🚀 快速开始
 
-- [Coolify Git 集成指南](./COOLIFY_GIT_INTEGRATION.md) - 使用 Coolify CLI 进行 Git 仓库管理和自动部署
-  - GitHub App 配置
-  - Coolify Web UI 设置
-  - Coolify CLI 命令
-  - 自动部署工作流
-  - 故障排除指南
+**如果你是第一次部署**:
+1. 先阅读 [Coolify 部署规范流程](#coolify-生产部署规范流程) - 了解标准流程
+2. 然后查看 [故障排除指南](#故障排除)
+3. 参考 [最佳实践](#reflex--coolify-最佳实践指南) - 避免常见错误
 
-### 📦 Docker 部署
+**如果部署失败**:
+1. 查看 [故障排除指南](#故障排除)
+2. 对比 [修复报告](#完整的修复报告) 中的错误
+3. 参考具体的错误解决方案
 
-- [Docker 部署指南](./docker-deployment.md) - Docker 容器化和部署（编写中）
+**如果想优化性能**:
+1. 阅读 [最佳实践](#reflex--coolify-最佳实践指南) 中的性能优化部分
+2. 检查 [部署规范](#coolify-生产部署规范流程) 中的配置优化
 
-### 🔧 环境配置
+---
 
-- [生产环境配置](./production-config.md) - 生产环境配置和最佳实践（编写中）
+## 📚 核心文档
+
+### 1. 完整的修复报告
+**文件**: `COOLIFY_FIX_REPORT.md`
+
+包含部署历程、7 个关键错误的完整诊断、根本原因分析和修复方案。
+
+### 2. Coolify 生产部署规范流程
+**文件**: `COOLIFY_DEPLOYMENT_STANDARDS.md`
+
+CI/CD 标准流程、部署检查清单、故障诊断树和自动化脚本。
+
+### 3. Reflex + Coolify 最佳实践指南
+**文件**: `REFLEX_COOLIFY_BEST_PRACTICES.md`
+
+配置标准、性能优化、安全最佳实践和故障排除指南。
+
+### 旧版文档（保留参考）
+- **[Quick Start Guide](./QUICK_START.md)** - 快速启动指南
+- **[Complete CI/CD Guide](./ci-cd.md)** - CI/CD 文档
+- **[Coolify Git 集成指南](./COOLIFY_GIT_INTEGRATION.md)** - Git 集成参考
 
 ---
 
