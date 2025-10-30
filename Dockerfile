@@ -49,9 +49,9 @@ ENV BACKEND_PORT=8000
 # Expose ports
 EXPOSE 3000 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+# Health check - extended start period for Reflex app compilation
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost:3000/ || exit 1
 
 # Start application
 CMD ["python", "-m", "reflex", "run", "--env", "production"]
