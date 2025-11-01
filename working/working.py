@@ -2,8 +2,6 @@
 
 import reflex as rx
 
-from rxconfig import config
-
 
 class LoginState(rx.State):
     """The login page state."""
@@ -69,7 +67,6 @@ def login_form() -> rx.Component:
                 text_align="center",
             ),
             rx.divider(),
-
             # Username input
             rx.vstack(
                 rx.text("Username", size="3", weight="medium"),
@@ -83,7 +80,6 @@ def login_form() -> rx.Component:
                 spacing="2",
                 width="100%",
             ),
-
             # Password input
             rx.vstack(
                 rx.text("Password", size="3", weight="medium"),
@@ -98,7 +94,6 @@ def login_form() -> rx.Component:
                 spacing="2",
                 width="100%",
             ),
-
             # Error message
             rx.cond(
                 LoginState.error_message != "",
@@ -109,7 +104,6 @@ def login_form() -> rx.Component:
                     width="100%",
                 ),
             ),
-
             # Remember me & Forgot password
             rx.hstack(
                 rx.checkbox("Remember me"),
@@ -118,7 +112,6 @@ def login_form() -> rx.Component:
                 width="100%",
                 justify="between",
             ),
-
             # Login button
             rx.button(
                 rx.cond(
@@ -134,7 +127,6 @@ def login_form() -> rx.Component:
                 width="100%",
                 is_disabled=LoginState.is_loading,
             ),
-
             # Sign up link
             rx.hstack(
                 rx.text("Don't have an account?", size="3"),
@@ -142,7 +134,6 @@ def login_form() -> rx.Component:
                 justify="center",
                 width="100%",
             ),
-
             spacing="4",
             width="100%",
         ),
