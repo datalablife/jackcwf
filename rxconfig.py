@@ -1,5 +1,6 @@
-import reflex as rx
 import os
+
+import reflex as rx
 
 # 检测是否在生产环境
 is_production = os.getenv("REFLEX_ENV", "dev") == "prod"
@@ -17,5 +18,5 @@ config = rx.Config(
     plugins=[
         rx.plugins.SitemapPlugin(),
         rx.plugins.TailwindV4Plugin(),
-    ]
+    ],
 )
