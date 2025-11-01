@@ -61,7 +61,7 @@ dependencies = [
     "python-multipart==0.0.20",
 
     # Utilities
-    "redis==6.4.0",
+    "redis==7.0.1",
     "click==8.3.0",
     "rich==14.2.0",
     "watchfiles==1.1.1",
