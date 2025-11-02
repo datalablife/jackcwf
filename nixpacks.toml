@@ -27,10 +27,10 @@ cmds = [
     ". .venv/bin/activate && python -m reflex export --frontend-only --loglevel info"
 ]
 
-# Start command
-# Note: Reflex accepts only 'dev' or 'prod', not 'production'
+# Start command - FIXED: Use virtual environment Python
+# Direct path to venv Python to ensure reflex module is available
 [start]
-cmd = "python -m reflex run --env prod --loglevel info"
+cmd = ".venv/bin/python -m reflex run --env prod --loglevel info"
 
 # Environment variables for production
 [variables]
