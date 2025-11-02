@@ -29,13 +29,16 @@ ENV PATH="/root/.cargo/bin:$PATH"
 COPY pyproject.toml uv.lock ./
 
 # Install Python dependencies (non-dev for production)
+# uv creates .venv in the current directory
 RUN uv sync --no-dev
 
 # Copy application code
 COPY . .
 
-# Initialize Reflex and build frontend
-ENV PATH="/app/.venv/bin:$PATH"
+# Ensure Python path includes the virtual environment
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV PYTHONPATH=/app:$PYTHONPATH
 RUN python -m reflex init --loglevel warning && \
     python -m reflex export --frontend-only --loglevel info
 

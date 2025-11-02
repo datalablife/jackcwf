@@ -9,11 +9,12 @@ nixPkgs = ["python312", "nodejs_20", "curl", "git", "unzip"]
 # Install phase - Python dependencies
 [phases.install]
 cmds = [
-    # Install uv package manager
-    "curl -LsSf https://astral.sh/uv/install.sh | sh",
-    "export PATH=\"$HOME/.cargo/bin:$PATH\"",
-    # Install Python dependencies (production only)
-    "uv sync --no-dev"
+    # Create virtual environment
+    "python -m venv .venv",
+    # Activate and upgrade pip
+    ". .venv/bin/activate && pip install --upgrade pip setuptools wheel",
+    # Install Python dependencies from pyproject.toml or requirements.txt
+    ". .venv/bin/activate && pip install -e . || pip install reflex granian fastapi pydantic uvicorn python-socketio python-engineio"
 ]
 
 # Build phase - compile Reflex frontend
