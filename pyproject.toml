@@ -36,7 +36,7 @@ classifiers = [
 
 dependencies = [
     # Web Framework & Server
-    "reflex==0.8.16",
+    "reflex==0.8.17",
     "reflex-hosting-cli==0.1.58",
     "starlette==0.48.0",
     "granian==2.5.5",
