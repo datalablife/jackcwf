@@ -39,6 +39,9 @@ PYTHONDONTWRITEBYTECODE = "1"
 REFLEX_ENV = "production"
 FRONTEND_PORT = "3000"
 BACKEND_PORT = "8000"
+# PORT is used by Nixpacks to determine which port to expose
+# For Reflex, the frontend port is the primary entry point
+PORT = "3000"
 # Ensure virtual environment is recognized
 VIRTUAL_ENV = "/app/.venv"
 # Virtual environment bin directory MUST be first in PATH
