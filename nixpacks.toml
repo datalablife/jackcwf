@@ -30,7 +30,7 @@ cmds = [
 # Start command - Directly use virtual environment Python to avoid PATH issues
 # This bypasses potential shell environment variable inheritance problems
 [start]
-cmd = "/app/.venv/bin/python -m reflex run --env production --loglevel info"
+cmd = "/app/.venv/bin/python -m reflex run --env prod --loglevel info"
 
 # Environment variables for production
 [variables]
