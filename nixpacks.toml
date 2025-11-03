@@ -27,9 +27,10 @@ cmds = [
     ". .venv/bin/activate && python -m reflex export --frontend-only --loglevel info"
 ]
 
-# Start command - Use startup script for proper environment setup
+# Start command - Directly use virtual environment Python to avoid PATH issues
+# This bypasses potential shell environment variable inheritance problems
 [start]
-cmd = "bash /app/start.sh"
+cmd = "/app/.venv/bin/python -m reflex run --env production --loglevel info"
 
 # Environment variables for production
 [variables]
@@ -38,6 +39,7 @@ PYTHONDONTWRITEBYTECODE = "1"
 REFLEX_ENV = "production"
 FRONTEND_PORT = "3000"
 BACKEND_PORT = "8000"
-# Ensure virtual environment binaries are in PATH
+# Ensure virtual environment is recognized
 VIRTUAL_ENV = "/app/.venv"
+# Virtual environment bin directory MUST be first in PATH
 PATH = "/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
