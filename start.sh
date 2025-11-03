@@ -1,29 +1,55 @@
 #!/bin/bash
-# Reflex production startup script for Coolify deployment
-# Ensures virtual environment is properly activated with all paths
+# Reflex production startup script
+# Ensures proper virtual environment activation for Coolify deployment
 
-set -e  # Exit on error
+set -e
+
+echo "========================================="
+echo "Starting Reflex Application"
+echo "========================================="
 
 # Set working directory
 cd /app
 
-# Activate virtual environment - this sets PATH correctly
-source .venv/bin/activate
+# Activate virtual environment
+echo "Activating virtual environment at /app/.venv"
+if [ -f ".venv/bin/activate" ]; then
+    source .venv/bin/activate
+    echo "Virtual environment activated successfully"
+else
+    echo "ERROR: Virtual environment not found at /app/.venv"
+    exit 1
+fi
+
+# Display environment information
+echo ""
+echo "Environment Information:"
+echo "----------------------------------------"
+echo "Python: $(which python)"
+echo "Python version: $(python --version)"
+echo "Reflex: $(which reflex)"
+echo "Granian: $(which granian 2>/dev/null || echo 'NOT FOUND')"
+echo "VIRTUAL_ENV: $VIRTUAL_ENV"
+echo "PATH: $PATH"
+echo "----------------------------------------"
+echo ""
 
 # Verify granian is available
 if ! command -v granian &> /dev/null; then
     echo "ERROR: granian not found in PATH"
-    echo "Current PATH: $PATH"
-    echo "Python location: $(which python)"
-    echo "Installed packages:"
-    pip list | grep -i granian
+    echo ""
+    echo "Checking installed packages:"
+    pip list | grep -i granian || echo "granian package not found"
+    echo ""
+    echo "Checking .venv/bin directory:"
+    ls -la .venv/bin/ | grep granian || echo "granian binary not found in .venv/bin"
     exit 1
 fi
 
-echo "Starting Reflex application..."
-echo "Python: $(which python)"
-echo "Granian: $(which granian)"
-echo "PATH: $PATH"
+echo "All checks passed. Starting Reflex server..."
+echo "========================================="
+echo ""
 
 # Start Reflex with production settings
-exec python -m reflex run --env prod --loglevel info
+# Use exec to replace shell process with Reflex
+exec reflex run --env prod --loglevel info

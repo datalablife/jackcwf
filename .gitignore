@@ -16,14 +16,27 @@ __pycache__/
 # 本地开发和环境
 .postgres_config
 assets/
-code_review_crew/
 
-# 项目文档和配置（本地管理）
-docs/
+# 代码审查工具（可选，根据需要调整）
+code_review_crew/output/
+
+# OpenSpec 和项目管理（本地管理）
 openspec/
-scripts/
-tests/
-AGENTS.md
-CLAUDE.md
 progress.md
 progress.archive.md
+
+# 脚本输出（不提交生成的文件）
+scripts/output/
+
+# 测试生成的文件和缓存
+tests/__pycache__/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 临时文件
+*.log
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db

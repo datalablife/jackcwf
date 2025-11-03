@@ -4,7 +4,7 @@
 # Setup phase - install system dependencies
 # unzip is required by Reflex for installing Bun (JavaScript runtime)
 [phases.setup]
-nixPkgs = ["python312", "nodejs_20", "curl", "git", "unzip"]
+nixPkgs = ["python312", "nodejs_20", "curl", "git", "unzip", "bash"]
 
 # Install phase - Python dependencies
 [phases.install]
@@ -27,9 +27,9 @@ cmds = [
     ". .venv/bin/activate && python -m reflex export --frontend-only --loglevel info"
 ]
 
-# Start command - Use wrapper script to ensure PATH includes virtual environment
+# Start command - Activate virtualenv properly so granian is in PATH
 [start]
-cmd = "bash -c 'export PATH=/app/.venv/bin:$PATH && python -m reflex run --env prod --loglevel info'"
+cmd = ". /app/.venv/bin/activate && exec reflex run --env prod --loglevel info"
 
 # Environment variables for production
 [variables]
@@ -38,5 +38,6 @@ PYTHONDONTWRITEBYTECODE = "1"
 REFLEX_ENV = "production"
 FRONTEND_PORT = "3000"
 BACKEND_PORT = "8000"
-# Add virtual environment to PATH so granian can be found
-PATH = "/app/.venv/bin:$PATH"
+# Ensure virtual environment binaries are in PATH
+VIRTUAL_ENV = "/app/.venv"
+PATH = "/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
