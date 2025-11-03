@@ -1,60 +1,29 @@
 #!/bin/bash
-# Reflex application startup script for Coolify deployment
-# This script ensures proper initialization and provides detailed logging
+# Reflex production startup script for Coolify deployment
+# Ensures virtual environment is properly activated with all paths
 
 set -e  # Exit on error
 
-echo "=================================================="
-echo "Starting Reflex 0.8.16 Application"
-echo "=================================================="
+# Set working directory
+cd /app
 
-# Display environment info
-echo ""
-echo "Environment Information:"
-echo "  Python version: $(python --version)"
-echo "  Node version: $(node --version)"
-echo "  Working directory: $(pwd)"
-echo "  User: $(whoami)"
+# Activate virtual environment - this sets PATH correctly
+source .venv/bin/activate
 
-# Activate virtual environment
-echo ""
-echo "Activating virtual environment..."
-export PATH="/app/.venv/bin:$PATH"
-
-# Verify Reflex installation
-echo ""
-echo "Verifying Reflex installation..."
-REFLEX_VERSION=$(python -m reflex --version 2>&1 || echo "FAILED")
-if [ "$REFLEX_VERSION" = "FAILED" ]; then
-    echo "ERROR: Reflex is not properly installed!"
+# Verify granian is available
+if ! command -v granian &> /dev/null; then
+    echo "ERROR: granian not found in PATH"
+    echo "Current PATH: $PATH"
+    echo "Python location: $(which python)"
+    echo "Installed packages:"
+    pip list | grep -i granian
     exit 1
 fi
-echo "  Reflex version: $REFLEX_VERSION"
 
-# Check for compiled frontend
-echo ""
-echo "Checking frontend compilation..."
-if [ ! -d ".web" ]; then
-    echo "WARNING: .web directory not found!"
-    echo "Running frontend export..."
-    python -m reflex export --frontend-only --loglevel info
-else
-    echo "  ✓ Frontend compiled (.web directory exists)"
-fi
+echo "Starting Reflex application..."
+echo "Python: $(which python)"
+echo "Granian: $(which granian)"
+echo "PATH: $PATH"
 
-# Display configuration
-echo ""
-echo "Application Configuration:"
-echo "  REFLEX_ENV: ${REFLEX_ENV:-production}"
-echo "  FRONTEND_PORT: ${FRONTEND_PORT:-3000}"
-echo "  BACKEND_PORT: ${BACKEND_PORT:-8000}"
-echo "  PYTHONUNBUFFERED: ${PYTHONUNBUFFERED:-1}"
-
-# Start Reflex application
-echo ""
-echo "=================================================="
-echo "Starting Reflex in production mode..."
-echo "=================================================="
-echo ""
-
-exec python -m reflex run --env production --loglevel info
+# Start Reflex with production settings
+exec python -m reflex run --env prod --loglevel info

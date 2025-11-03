@@ -27,10 +27,9 @@ cmds = [
     ". .venv/bin/activate && python -m reflex export --frontend-only --loglevel info"
 ]
 
-# Start command - FIXED: Use virtual environment Python
-# Direct path to venv Python to ensure reflex module is available
+# Start command - Use wrapper script to ensure PATH includes virtual environment
 [start]
-cmd = ".venv/bin/python -m reflex run --env prod --loglevel info"
+cmd = "bash -c 'export PATH=/app/.venv/bin:$PATH && python -m reflex run --env prod --loglevel info'"
 
 # Environment variables for production
 [variables]
@@ -39,3 +38,5 @@ PYTHONDONTWRITEBYTECODE = "1"
 REFLEX_ENV = "production"
 FRONTEND_PORT = "3000"
 BACKEND_PORT = "8000"
+# Add virtual environment to PATH so granian can be found
+PATH = "/app/.venv/bin:$PATH"
