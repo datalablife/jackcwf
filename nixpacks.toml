@@ -27,9 +27,9 @@ cmds = [
     ". .venv/bin/activate && python -m reflex export --frontend-only --loglevel info"
 ]
 
-# Start command - Activate virtualenv properly so granian is in PATH
+# Start command - Use startup script for proper environment setup
 [start]
-cmd = ". /app/.venv/bin/activate && exec reflex run --env prod --loglevel info"
+cmd = "bash /app/start.sh"
 
 # Environment variables for production
 [variables]
