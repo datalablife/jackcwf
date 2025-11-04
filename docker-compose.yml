@@ -64,8 +64,11 @@ services:
 
       # 服务配置
       - traefik.http.services.http-0-mg8c40oowo80o08o0gsw0gwc.loadbalancer.server.port=3000
+      - traefik.http.services.http-0-mg8c40oowo80o08o0gsw0gwc.loadbalancer.server.scheme=http
       - traefik.http.services.https-0-mg8c40oowo80o08o0gsw0gwc.loadbalancer.server.port=3000
+      - traefik.http.services.https-0-mg8c40oowo80o08o0gsw0gwc.loadbalancer.server.scheme=http
       - traefik.http.services.https-websocket-mg8c40oowo80o08o0gsw0gwc.loadbalancer.server.port=8000
+      - traefik.http.services.https-websocket-mg8c40oowo80o08o0gsw0gwc.loadbalancer.server.scheme=http
 
 networks:
   coolify:
