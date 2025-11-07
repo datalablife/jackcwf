@@ -8,6 +8,7 @@ Each model represents a table in the PostgreSQL database.
 from .datasource import DataSource, DataSourceType, DataSourceStatus
 from .database_connection import DatabaseConnection
 from .file_upload import FileUpload, FileFormat, FileParseStatus
+from .file_metadata import FileMetadata
 from .schema import Schema
 from .datasource_config import DataSourceConfig
 
@@ -22,6 +23,8 @@ __all__ = [
     "FileUpload",
     "FileFormat",
     "FileParseStatus",
+    # File Metadata
+    "FileMetadata",
     # Schema
     "Schema",
     # Configuration

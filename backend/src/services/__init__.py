@@ -8,12 +8,18 @@
     - DataSourceService: 数据源管理服务
     - SchemaCache: 数据库架构缓存
     - get_schema_cache: 获取全局架构缓存实例
+    - FileValidationService: 文件上传验证服务
+    - CSVParserService: CSV 文件解析服务
+    - ExcelParserService: Excel 文件解析服务
 """
 
 from .encryption import EncryptionService, get_encryption_service
 from .postgres import PostgresService
 from .datasource_service import DataSourceService
 from .cache import SchemaCache, get_schema_cache
+from .file_validation import FileValidationService, FileValidationError
+from .csv_parser import CSVParserService
+from .excel_parser import ExcelParserService
 
 __all__ = [
     "EncryptionService",
@@ -22,6 +28,10 @@ __all__ = [
     "DataSourceService",
     "SchemaCache",
     "get_schema_cache",
+    "FileValidationService",
+    "FileValidationError",
+    "CSVParserService",
+    "ExcelParserService",
 ]
 
 
