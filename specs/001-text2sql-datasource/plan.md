@@ -104,19 +104,23 @@ backend/
 frontend/
 ├── src/
 │   ├── components/
-│   │   ├── datasources/     # 数据源管理组件
+│   │   ├── datasources/     # 数据源管理组件 (shadcn/ui)
 │   │   │   ├── DataSourceList.tsx
 │   │   │   ├── DataSourceCard.tsx
 │   │   │   ├── ConnectPostgres.tsx
 │   │   │   └── FileUpload.tsx
-│   │   ├── schema/          # 模式浏览器组件
+│   │   ├── schema/          # 模式浏览器组件 (shadcn/ui)
 │   │   │   ├── SchemaExplorer.tsx
 │   │   │   └── TableViewer.tsx
-│   │   └── common/          # 通用组件
+│   │   ├── dashboard/       # 仪表板数据可视化 (Tremor)
+│   │   │   ├── StatisticsCards.tsx    # Tremor KPI/Stats 组件
+│   │   │   ├── DataSourceMetrics.tsx  # 数据源统计信息
+│   │   │   └── ConnectionStatus.tsx   # 连接状态指示
+│   │   └── common/          # 通用组件 (shadcn/ui)
 │   │       ├── StatusBadge.tsx
 │   │       └── ErrorAlert.tsx
 │   ├── pages/
-│   │   ├── Dashboard.tsx    # 主仪表板
+│   │   ├── Dashboard.tsx    # 主仪表板 (Tremor 统计 + shadcn/ui 列表)
 │   │   ├── DataSourceSetup.tsx
 │   │   └── SchemaExplorer.tsx
 │   ├── stores/              # Zustand 状态管理
@@ -137,6 +141,15 @@ frontend/
 ```
 
 **结构决策**: 采用选项 2（Web 应用）- 前后端分离，便于独立开发和部署。后端通过 FastAPI 提供 REST API，前端使用 React 18 + Zustand 构建交互式界面。
+
+**前端架构决策 - Tremor + shadcn/ui 组合**:
+- **shadcn/ui**: 用于基础 UI 组件（表单、按钮、卡片、对话框等）
+  - 优势: 可定制、Tailwind CSS 集成、优秀的可访问性
+  - 用途: 数据源管理、连接表单、模式浏览器
+- **Tremor**: 用于数据可视化和仪表板组件
+  - 优势: 专为数据应用设计、KPI 卡片、统计展示、图表库
+  - 用途: Dashboard 统计信息、数据源指标、连接状态可视化、性能监控
+- **整合方式**: Tremor 提供数据展示层，shadcn/ui 提供交互和管理层，Tailwind CSS 统一样式系统
 
 ## 复杂性跟踪
 

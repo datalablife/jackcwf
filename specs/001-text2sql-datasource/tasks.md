@@ -77,7 +77,10 @@ Phase 2: Foundational (所有 Phase 3+ 的阻塞)
 ### 前端项目初始化
 
 - [ ] T005 [P] 创建 React 18 + TypeScript 项目 (frontend/)
-- [ ] T006 [P] 安装前端依赖 (React 18, TypeScript, Zustand, React Query, shadcn/ui, Tailwind)
+- [ ] T006 [P] 安装前端依赖 (React 18, TypeScript, Zustand, @tanstack/react-query, shadcn/ui, Tremor, Tailwind, axios)
+  - **关键**: Tremor 用于数据可视化图表（图表、仪表板统计）
+  - **关键**: shadcn/ui 用于基础 UI 组件（表单、按钮、对话框等）
+  - **关键**: Tailwind CSS 用于样式和响应式设计
 - [ ] T007 [P] 创建 frontend/.env.example 环境变量文档
 - [ ] T008 创建 frontend/src/main.tsx 入口和基础路由结构
 
@@ -297,16 +300,22 @@ Phase 2: Foundational (所有 Phase 3+ 的阻塞)
 ### 仪表板页面
 
 - [ ] T057 创建 frontend/src/pages/Dashboard.tsx
-  - 显示数据源列表
-  - 统计信息
+  - 显示数据源列表（使用 shadcn/ui 组件）
+  - **Tremor 统计信息**: 使用 Tremor KPIs 和 Stats 组件展示：
+    - 数据源总数
+    - 连接状态（已连接/断开）
+    - 最近连接时间
 
 ### 数据源卡片
 
 - [ ] T058 [P] 创建 frontend/src/components/datasources/DataSourceCard.tsx
-  - 卡片设计和操作
+  - 使用 shadcn/ui Card 组件构建
+  - 卡片设计和操作（连接、删除、编辑）
+  - **Tremor 状态指示**: 使用 Tremor Badge/Callout 显示连接状态
 
 - [ ] T059 [P] 更新 frontend/src/components/datasources/DataSourceList.tsx
   - 使用 DataSourceCard
+  - **Tremor 列表布局**: 如需大量数据展示，使用 Tremor Table 或 Grid
 
 ### 测试
 
