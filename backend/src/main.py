@@ -1,4 +1,4 @@
-"""FastAPI application entry point with configuration and middleware setup."""
+"""FastAPI 应用程序入口点，包括配置和中间件设置。"""
 
 import logging
 from contextlib import asynccontextmanager
@@ -7,7 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# Configure logging
+from src.api import datasources
+
+# 配置日志记录
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -17,23 +19,23 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application startup and shutdown events."""
-    logger.info("Starting up Text2SQL Backend application")
+    """应用程序启动和关闭事件。"""
+    logger.info("启动 Text2SQL 后端应用程序")
     yield
-    logger.info("Shutting down Text2SQL Backend application")
+    logger.info("关闭 Text2SQL 后端应用程序")
 
 
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI application."""
+    """创建并配置 FastAPI 应用程序。"""
 
     app = FastAPI(
-        title="Text2SQL Data Source Integration API",
-        description="AI-powered data source integration backend",
+        title="Text2SQL 数据源集成 API",
+        description="AI 驱动的数据源集成后端",
         version="0.1.0",
         lifespan=lifespan
     )
 
-    # Configure CORS middleware
+    # 配置 CORS 中间件
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:5173", "http://localhost:3000"],
@@ -41,6 +43,9 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # 包含路由
+    app.include_router(datasources.router)
 
     # Health check endpoint
     @app.get("/health", tags=["Health"])

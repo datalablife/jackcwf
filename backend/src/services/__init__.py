@@ -1,15 +1,28 @@
 """
-Services package for business logic and utilities.
+服务包，用于业务逻辑和实用工具。
 
-Exports:
-    - EncryptionService: Symmetric encryption service for passwords
-    - get_encryption_service: Get global encryption service instance
+导出:
+    - EncryptionService: 用于密码加密的对称加密服务
+    - get_encryption_service: 获取全局加密服务实例
+    - PostgresService: PostgreSQL 连接和查询服务
+    - DataSourceService: 数据源管理服务
+    - SchemaCache: 数据库架构缓存
+    - get_schema_cache: 获取全局架构缓存实例
 """
 
 from .encryption import EncryptionService, get_encryption_service
+from .postgres import PostgresService
+from .datasource_service import DataSourceService
+from .cache import SchemaCache, get_schema_cache
 
 __all__ = [
     "EncryptionService",
     "get_encryption_service",
+    "PostgresService",
+    "DataSourceService",
+    "SchemaCache",
+    "get_schema_cache",
 ]
+
+
 
