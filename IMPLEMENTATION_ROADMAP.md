@@ -92,10 +92,20 @@
 
 - [ ] T006 安装前端依赖
   ```bash
-  npm install zustand react-query axios
-  npm install -D tailwindcss postcss autoprefixer
-  npm install -D vitest @testing-library/react
+  # Core dependencies
+  npm install zustand @tanstack/react-query axios react-router-dom
+
+  # UI & Styling
+  npm install tremor recharts        # Data visualization
+  npm install -D tailwindcss@3 postcss autoprefixer
+
+  # Testing
+  npm install -D vitest @testing-library/react @testing-library/jest-dom
+
+  # Development tools
+  npm install -D @types/node typescript
   ```
+  **Important**: Tremor for dashboard visualization, shadcn/ui (to be added via CLI) for base components
 
 - [ ] T007 创建 frontend/.env.example
   ```env
