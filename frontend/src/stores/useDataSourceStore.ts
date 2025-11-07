@@ -31,7 +31,7 @@ interface DataSourceStore {
   setLoading: (loading: boolean) => void;
 }
 
-export const useDataSourceStore = create<DataSourceStore>((set, get) => ({
+export const useDataSourceStore = create<DataSourceStore>((set) => ({
   // Initial state
   dataSources: [],
   selectedId: null,
@@ -84,7 +84,7 @@ export const useDataSourceStore = create<DataSourceStore>((set, get) => ({
     }
   },
 
-  testConnection: async (config: any) => {
+  testConnection: async (_config: any) => {
     set({ isLoading: true, error: null });
     try {
       // TODO: Implement API call to POST /api/datasources/{id}/test
