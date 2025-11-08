@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api import datasources
+from src.api import datasources, file_uploads, file_preview
 
 # 配置日志记录
 logging.basicConfig(
@@ -46,6 +46,8 @@ def create_app() -> FastAPI:
 
     # 包含路由
     app.include_router(datasources.router)
+    app.include_router(file_uploads.router)
+    app.include_router(file_preview.router)
 
     # Health check endpoint
     @app.get("/health", tags=["Health"])
