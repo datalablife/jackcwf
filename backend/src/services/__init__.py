@@ -11,6 +11,7 @@
     - FileValidationService: 文件上传验证服务
     - CSVParserService: CSV 文件解析服务
     - ExcelParserService: Excel 文件解析服务
+    - FileUploadService: 文件上传管理服务
 """
 
 from .encryption import EncryptionService, get_encryption_service
@@ -20,6 +21,7 @@ from .cache import SchemaCache, get_schema_cache
 from .file_validation import FileValidationService, FileValidationError
 from .csv_parser import CSVParserService
 from .excel_parser import ExcelParserService
+from .file_upload_service import FileUploadService
 
 __all__ = [
     "EncryptionService",
@@ -32,6 +34,7 @@ __all__ = [
     "FileValidationError",
     "CSVParserService",
     "ExcelParserService",
+    "FileUploadService",
 ]
 
 
