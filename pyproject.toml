@@ -44,7 +44,7 @@ dependencies = [
     # Database & ORM
     "sqlalchemy==2.0.44",
     "sqlmodel==0.0.27",
-    "alembic==1.17.0",
+    "alembic==1.17.1",
     "psycopg2-binary==2.9.11",
 
     # HTTP & WebSocket
