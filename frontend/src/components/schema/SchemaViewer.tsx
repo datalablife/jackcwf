@@ -5,7 +5,6 @@
  */
 
 import { useState, useEffect } from 'react'
-import { useDataSourceStore } from '@/stores/useDataSourceStore'
 
 interface Table {
   name: string
@@ -32,6 +31,7 @@ export function SchemaViewer({ datasourceId }: SchemaViewerProps) {
 
   useEffect(() => {
     loadSchema()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [datasourceId])
 
   const loadSchema = async () => {

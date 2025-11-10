@@ -16,7 +16,7 @@ import {
 } from '@/services/preview.api'
 
 export function FilePreviewPage() {
-  const [fileId, setFileId] = useState<number | null>(null)
+  const [fileId] = useState<number | null>(null)
 
   const {
     currentFile,

@@ -5,7 +5,7 @@
  */
 
 import { useEffect } from 'react'
-import { useDataSourceStore, type DataSource } from '@/stores/useDataSourceStore'
+import { useDataSourceStore } from '@/stores/useDataSourceStore'
 import { StatusBadge } from '@/components/common/StatusBadge'
 
 export function DataSourceList() {
@@ -22,6 +22,7 @@ export function DataSourceList() {
 
   useEffect(() => {
     fetchDataSources()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSelectDataSource = (id: number) => {

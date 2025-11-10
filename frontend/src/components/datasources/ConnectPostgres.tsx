@@ -161,7 +161,7 @@ export function ConnectPostgres() {
 
       // 刷新数据源列表
       queryClient.invalidateQueries({ queryKey: ['datasources'] })
-    } catch (err) {
+    } catch {
       // 错误已由 store 处理
     }
   }
