@@ -4,7 +4,8 @@
  * 定义应用的所有路由和页面。
  */
 
-import { createBrowserRouter, RouteObject } from 'react-router-dom'
+import { createBrowserRouter } from 'react-router-dom'
+import type { RouteObject } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { HomePage } from '@/pages/HomePage'
 import { FileUploadPage } from '@/pages/FileUploadPage'

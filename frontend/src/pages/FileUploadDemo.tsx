@@ -11,7 +11,7 @@ import {
   UploadProgress,
 } from '../components/file-upload'
 import { FilePreview, PreviewTable } from '../components/file-preview'
-import { FileMetadata } from '../components/file-preview/FilePreview'
+import type { FileMetadata } from '../components/file-preview/FilePreview'
 
 export function FileUploadDemo() {
   const [uploadProgress, setUploadProgress] = useState(0)

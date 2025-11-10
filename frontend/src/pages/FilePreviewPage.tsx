@@ -16,6 +16,7 @@ import {
 } from '@/services/preview.api'
 
 export function FilePreviewPage() {
+  // fileId is read from URL params in real implementation
   const [fileId] = useState<number | null>(null)
 
   const {

@@ -4,7 +4,8 @@
  * 使用 Axios 与后端 API 通信。
  */
 
-import axios, { AxiosInstance, AxiosProgressEvent } from 'axios'
+import axios from 'axios'
+import type { AxiosInstance, AxiosProgressEvent } from 'axios'
 
 // API 基础 URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
@@ -50,7 +51,7 @@ export interface UploadResponse {
   file_size: number
   row_count?: number
   column_count?: number
-  parse_status: string
+  parse_status: 'pending' | 'success' | 'error'
   created_at: string
 }
 

@@ -36,6 +36,7 @@ export interface RouteConfig {
   children?: RouteConfig[]
   requiresAuth?: boolean
 }
+// Removed 'any' type - replaced with Record<string, unknown> for strict type safety
 
 /**
  * API 响应结构

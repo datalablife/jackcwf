@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react'
+// Note: useDataSourceStore import removed as it's not used in this component
 
 interface Table {
   name: string

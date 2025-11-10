@@ -7,6 +7,7 @@
 import { useEffect } from 'react'
 import { useDataSourceStore } from '@/stores/useDataSourceStore'
 import { StatusBadge } from '@/components/common/StatusBadge'
+// type DataSource is not used directly in JSX, only through store destructuring
 
 export function DataSourceList() {
   const {
