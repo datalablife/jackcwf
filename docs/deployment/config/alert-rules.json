@@ -1,0 +1,237 @@
+{
+  "version": "1.0",
+  "timestamp": "2025-11-11T23:50:00Z",
+  "alert_rules": [
+    {
+      "id": "alert_001",
+      "name": "High Response Time Warning",
+      "description": "Alert when response time exceeds 1 second",
+      "metric": "http_request_duration_ms",
+      "condition": "p95 > 1000",
+      "severity": "warning",
+      "duration_minutes": 5,
+      "enabled": true,
+      "notification_channels": ["slack", "email"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_002",
+      "name": "High Response Time Critical",
+      "description": "Alert when response time exceeds 5 seconds",
+      "metric": "http_request_duration_ms",
+      "condition": "p95 > 5000",
+      "severity": "critical",
+      "duration_minutes": 2,
+      "enabled": true,
+      "notification_channels": ["slack", "email", "pagerduty"],
+      "action": "notify_and_escalate"
+    },
+    {
+      "id": "alert_003",
+      "name": "High Error Rate",
+      "description": "Alert when error rate exceeds 5%",
+      "metric": "http_request_errors_total",
+      "condition": "rate > 5",
+      "severity": "critical",
+      "duration_minutes": 2,
+      "enabled": true,
+      "notification_channels": ["slack", "email", "pagerduty"],
+      "action": "notify_and_page"
+    },
+    {
+      "id": "alert_004",
+      "name": "Database Connection Pool Exhaustion",
+      "description": "Alert when database connection pool usage exceeds 90%",
+      "metric": "database_connections_used",
+      "condition": "> 18",
+      "severity": "critical",
+      "duration_minutes": 1,
+      "enabled": true,
+      "notification_channels": ["slack", "email"],
+      "action": "notify_and_scale"
+    },
+    {
+      "id": "alert_005",
+      "name": "High CPU Usage",
+      "description": "Alert when CPU usage exceeds 90%",
+      "metric": "cpu_usage_percent",
+      "condition": "> 90",
+      "severity": "critical",
+      "duration_minutes": 3,
+      "enabled": true,
+      "notification_channels": ["slack", "email"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_006",
+      "name": "High Memory Usage",
+      "description": "Alert when memory usage exceeds 95%",
+      "metric": "memory_usage_percent",
+      "condition": "> 95",
+      "severity": "critical",
+      "duration_minutes": 2,
+      "enabled": true,
+      "notification_channels": ["slack", "email"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_007",
+      "name": "API Documentation Accessed in Production",
+      "description": "Alert when API documentation is accessed in production environment",
+      "metric": "api_doc_requests",
+      "condition": "> 0",
+      "severity": "warning",
+      "duration_minutes": 1,
+      "enabled": true,
+      "notification_channels": ["slack"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_008",
+      "name": "Database Query Slow",
+      "description": "Alert when database query time exceeds 5 seconds",
+      "metric": "database_query_duration_ms",
+      "condition": "p95 > 5000",
+      "severity": "warning",
+      "duration_minutes": 5,
+      "enabled": true,
+      "notification_channels": ["slack"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_009",
+      "name": "Service Health Check Failed",
+      "description": "Alert when health check endpoint fails",
+      "metric": "health_check_status",
+      "condition": "failed",
+      "severity": "critical",
+      "duration_minutes": 1,
+      "enabled": true,
+      "notification_channels": ["slack", "email", "pagerduty"],
+      "action": "notify_and_restart"
+    },
+    {
+      "id": "alert_010",
+      "name": "Low Cache Hit Rate",
+      "description": "Alert when cache hit rate drops below 50%",
+      "metric": "cache_hit_rate",
+      "condition": "< 50",
+      "severity": "info",
+      "duration_minutes": 10,
+      "enabled": true,
+      "notification_channels": ["slack"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_011",
+      "name": "File Upload Failures",
+      "description": "Alert when file upload error rate exceeds 5 errors per minute",
+      "metric": "file_upload_errors",
+      "condition": "rate > 5",
+      "severity": "warning",
+      "duration_minutes": 3,
+      "enabled": true,
+      "notification_channels": ["slack", "email"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_012",
+      "name": "Authentication Failures",
+      "description": "Alert when authentication failures exceed 10 per minute",
+      "metric": "auth_failures",
+      "condition": "rate > 10",
+      "severity": "warning",
+      "duration_minutes": 2,
+      "enabled": true,
+      "notification_channels": ["slack", "email"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_013",
+      "name": "SSL Certificate Expiration Warning",
+      "description": "Alert when SSL certificate expiration is within 30 days",
+      "metric": "ssl_cert_expiry_days",
+      "condition": "< 30",
+      "severity": "warning",
+      "duration_minutes": 60,
+      "enabled": true,
+      "notification_channels": ["email"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_014",
+      "name": "Disk Space Low",
+      "description": "Alert when disk space usage exceeds 90%",
+      "metric": "disk_usage_percent",
+      "condition": "> 90",
+      "severity": "critical",
+      "duration_minutes": 5,
+      "enabled": true,
+      "notification_channels": ["slack", "email"],
+      "action": "notify"
+    },
+    {
+      "id": "alert_015",
+      "name": "Database Replication Lag",
+      "description": "Alert when database replication lag exceeds 10 seconds",
+      "metric": "db_replication_lag_seconds",
+      "condition": "> 10",
+      "severity": "warning",
+      "duration_minutes": 5,
+      "enabled": true,
+      "notification_channels": ["slack"],
+      "action": "notify"
+    }
+  ],
+  "notification_channels": {
+    "slack": {
+      "enabled": true,
+      "webhook_url": "https://hooks.slack.com/services/YOUR/WEBHOOK/URL",
+      "channel": "#production-alerts",
+      "username": "Alert Bot"
+    },
+    "email": {
+      "enabled": true,
+      "smtp_host": "smtp.gmail.com",
+      "smtp_port": 587,
+      "from_address": "alerts@yourdomain.com",
+      "to_addresses": ["admin@yourdomain.com", "devops@yourdomain.com"]
+    },
+    "pagerduty": {
+      "enabled": false,
+      "integration_key": "YOUR_PAGERDUTY_INTEGRATION_KEY"
+    }
+  },
+  "escalation_policies": {
+    "warning": {
+      "first_notification": "immediately",
+      "escalation_time_minutes": 15,
+      "escalate_to": "team_lead"
+    },
+    "critical": {
+      "first_notification": "immediately",
+      "escalation_time_minutes": 5,
+      "escalate_to": "on_call_engineer",
+      "second_escalation_time_minutes": 10,
+      "second_escalate_to": "manager"
+    }
+  },
+  "maintenance_windows": [
+    {
+      "id": "maint_001",
+      "name": "Weekly Maintenance",
+      "start_time": "02:00 UTC",
+      "end_time": "03:00 UTC",
+      "day_of_week": "Sunday",
+      "suppress_alerts": true
+    },
+    {
+      "id": "maint_002",
+      "name": "Monthly Patching",
+      "start_time": "22:00 UTC",
+      "end_time": "23:00 UTC",
+      "dates": ["2025-11-15", "2025-12-15"],
+      "suppress_alerts": true
+    }
+  ]
+}

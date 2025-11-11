@@ -1,0 +1,133 @@
+# Logrotate Configuration for Data Management System
+# Location: /etc/logrotate.d/data-management-prod
+# Purpose: Automatic log file rotation and compression
+# Last Updated: 2025-11-11
+
+# Production Backend Application Logs
+/var/log/data-management-prod/backend.log {
+    # Rotate logs daily
+    daily
+
+    # Keep 30 backup files
+    rotate 30
+
+    # Compress rotated logs
+    compress
+
+    # Delay compression until next rotation
+    delaycompress
+
+    # Don't rotate if file is empty
+    notifempty
+
+    # Create new log file with same permissions
+    create 0640 www-data www-data
+
+    # Send signal to reload logs
+    sharedscripts
+    postrotate
+        # Restart or reload the application
+        systemctl reload data-management-prod || true
+    endscript
+
+    # Only keep logs compressed and rotated
+    missingok
+
+    # Maximum size per log file (e.g., 100MB)
+    size 100M
+}
+
+# Application Error Logs
+/var/log/data-management-prod/error.log {
+    daily
+    rotate 90
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data www-data
+    sharedscripts
+    postrotate
+        systemctl reload data-management-prod || true
+    endscript
+    missingok
+    size 50M
+}
+
+# Application Access Logs
+/var/log/data-management-prod/access.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data www-data
+    sharedscripts
+    postrotate
+        systemctl reload data-management-prod || true
+    endscript
+    missingok
+    size 200M
+}
+
+# Security/Audit Logs
+/var/log/data-management-prod/security.log {
+    daily
+    rotate 180
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data www-data
+    sharedscripts
+    postrotate
+        systemctl reload data-management-prod || true
+    endscript
+    missingok
+    size 50M
+}
+
+# Database Logs
+/var/log/data-management-prod/database.log {
+    daily
+    rotate 60
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data www-data
+    missingok
+    size 100M
+}
+
+# Metrics/Monitoring Logs
+/var/log/data-management-prod/metrics.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create 0640 www-data www-data
+    missingok
+    size 50M
+}
+
+# Archive old logs directory
+/var/log/data-management-prod/archive/*.log {
+    weekly
+    rotate 12
+    compress
+    notifempty
+    missingok
+}
+
+# Syslog entries for Data Management
+/var/log/syslog {
+    daily
+    rotate 30
+    compress
+    delaycompress
+    notifempty
+    create 0640 syslog adm
+    sharedscripts
+    postrotate
+        /lib/systemd/systemd-logind-restart || true
+    endscript
+}

@@ -6,7 +6,7 @@
 
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from sqlalchemy.ext.asyncio import AsyncSession
 import os
 from datetime import datetime
@@ -30,11 +30,10 @@ class FileUploadResponse(BaseModel):
     column_count: Optional[int]
     parse_status: str
     parse_error: Optional[str]
-    created_at: str
-    updated_at: str
+    created_at: datetime
+    updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FileListResponse(BaseModel):

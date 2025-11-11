@@ -7,7 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from src.api import datasources, file_uploads, file_preview
+from src.api import datasources, file_uploads, file_preview, memory
+from src.memory.manager import initialize_memory_manager
+from src.services.claude_integration import initialize_claude_service
 
 # 配置日志记录
 logging.basicConfig(
@@ -21,7 +23,22 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """应用程序启动和关闭事件。"""
     logger.info("启动 Text2SQL 后端应用程序")
+
+    # Initialize memory manager and Claude service on startup
+    try:
+        logger.info("初始化 Memori 内存管理系统...")
+        await initialize_memory_manager()
+        logger.info("Memori 初始化成功")
+
+        logger.info("初始化 Claude 集成服务...")
+        await initialize_claude_service()
+        logger.info("Claude 集成服务初始化成功")
+    except Exception as e:
+        logger.warning(f"内存和Claude服务初始化失败: {str(e)}")
+        logger.info("应用继续启动，内存功能不可用")
+
     yield
+
     logger.info("关闭 Text2SQL 后端应用程序")
 
 
@@ -48,6 +65,7 @@ def create_app() -> FastAPI:
     app.include_router(datasources.router)
     app.include_router(file_uploads.router)
     app.include_router(file_preview.router)
+    app.include_router(memory.router)  # Memory management routes
 
     # Health check endpoint
     @app.get("/health", tags=["Health"])

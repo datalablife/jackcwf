@@ -22,8 +22,6 @@ code_review_crew/output/
 
 # OpenSpec 和项目管理（本地管理）
 openspec/
-progress.md
-progress.archive.md
 
 # 脚本输出（不提交生成的文件）
 scripts/output/

@@ -1,0 +1,469 @@
+# Production Monitoring Configuration
+# Last Updated: 2025-11-11
+# Purpose: Centralized monitoring, logging, and alerting configuration
+
+---
+# ========================================
+# Application Performance Monitoring (APM)
+# ========================================
+
+monitoring:
+  enabled: true
+  environment: production
+  service_name: data-management-system
+  service_version: 0.1.0
+
+  # Performance Thresholds
+  thresholds:
+    response_time_warning_ms: 1000      # 1 second
+    response_time_critical_ms: 5000     # 5 seconds
+    error_rate_warning_percent: 5       # 5%
+    error_rate_critical_percent: 10     # 10%
+    cpu_usage_warning_percent: 70       # 70%
+    cpu_usage_critical_percent: 90      # 90%
+    memory_usage_warning_percent: 80    # 80%
+    memory_usage_critical_percent: 95   # 95%
+    database_connection_pool_utilization: 80  # 80%
+
+  # Metrics Collection
+  metrics:
+    enabled: true
+    port: 9090
+    path: /metrics
+
+    # Metrics to collect
+    collect:
+      - http_requests_total        # Total HTTP requests
+      - http_request_duration_ms   # Request processing time
+      - http_request_errors_total  # Failed requests
+      - database_connections       # Active database connections
+      - database_query_duration_ms # Query execution time
+      - cache_hits_total          # Cache hit count
+      - cache_misses_total        # Cache miss count
+      - file_uploads_total        # Total file uploads
+      - file_upload_errors        # File upload failures
+      - api_doc_requests          # API documentation requests (should be 0)
+
+  # Health Checks
+  health_check:
+    enabled: true
+    interval_seconds: 30
+    timeout_seconds: 5
+    endpoints:
+      - path: /health
+        critical: true
+      - path: /metrics
+        critical: false
+
+---
+# ========================================
+# Logging Configuration
+# ========================================
+
+logging:
+  enabled: true
+  environment: production
+
+  # Log Levels
+  levels:
+    application: WARNING
+    framework: WARNING
+    database: INFO
+    cache: INFO
+    security: WARNING
+    errors: ERROR
+
+  # Log Outputs
+  outputs:
+    console:
+      enabled: false  # Disable console in production
+      level: WARNING
+      format: json
+
+    file:
+      enabled: true
+      path: /var/log/data-management-prod
+      filename: backend.log
+      max_size_mb: 100
+      backup_count: 10
+      level: WARNING
+      format: json
+
+    syslog:
+      enabled: true
+      host: localhost
+      port: 514
+      facility: local0
+      level: INFO
+
+    remote_syslog:
+      enabled: false  # Enable if using remote logging service
+      host: logs.example.com
+      port: 514
+      protocol: tcp
+
+  # Log Fields
+  fields:
+    timestamp: true
+    level: true
+    logger: true
+    message: true
+    request_id: true
+    user_id: true
+    http_method: true
+    http_path: true
+    http_status: true
+    response_time_ms: true
+    error_type: true
+    error_message: true
+    stack_trace: false  # Disabled in production for security
+
+  # Log Filtering
+  filters:
+    exclude_paths:
+      - /health              # Exclude health check logs
+      - /metrics             # Exclude metrics logs
+      - /docs                # Exclude API docs requests
+      - /redoc               # Exclude ReDoc requests
+
+    exclude_patterns:
+      - "^GET /static/"      # Exclude static file requests
+      - "^GET /assets/"      # Exclude asset requests
+
+---
+# ========================================
+# Alerting Configuration
+# ========================================
+
+alerting:
+  enabled: true
+  environment: production
+
+  # Alert Channels
+  channels:
+    email:
+      enabled: true
+      smtp_host: smtp.gmail.com
+      smtp_port: 587
+      smtp_user: alerts@yourdomain.com
+      smtp_password: ${SMTP_PASSWORD}
+      from_address: alerts@yourdomain.com
+      to_addresses:
+        - admin@yourdomain.com
+        - devops@yourdomain.com
+
+    slack:
+      enabled: true
+      webhook_url: ${SLACK_WEBHOOK_URL}
+      channel: "#production-alerts"
+      username: "Data Management Bot"
+      icon_emoji: ":warning:"
+
+    pagerduty:
+      enabled: false  # Enable if using PagerDuty
+      integration_key: ${PAGERDUTY_INTEGRATION_KEY}
+      severity_warning: warning
+      severity_critical: critical
+
+  # Alert Rules
+  rules:
+    - name: "High Response Time"
+      metric: http_request_duration_ms
+      condition: "p95 > 1000"  # 95th percentile > 1 second
+      severity: warning
+      duration: 5m
+      channels: [slack, email]
+
+    - name: "High Error Rate"
+      metric: http_request_errors_total
+      condition: "rate > 5%"
+      severity: critical
+      duration: 2m
+      channels: [slack, email, pagerduty]
+
+    - name: "Database Connection Pool Exhaustion"
+      metric: database_connections
+      condition: "used > 18"  # 90% of 20 connections
+      severity: critical
+      duration: 1m
+      channels: [slack, email]
+
+    - name: "High CPU Usage"
+      metric: cpu_usage_percent
+      condition: "> 90"
+      severity: critical
+      duration: 3m
+      channels: [slack, email]
+
+    - name: "High Memory Usage"
+      metric: memory_usage_percent
+      condition: "> 95"
+      severity: critical
+      duration: 2m
+      channels: [slack, email]
+
+    - name: "API Documentation Accessed in Production"
+      metric: api_doc_requests
+      condition: "> 0"
+      severity: warning
+      duration: 1m
+      channels: [slack]
+
+    - name: "Database Query Slow"
+      metric: database_query_duration_ms
+      condition: "p95 > 5000"  # 95th percentile > 5 seconds
+      severity: warning
+      duration: 5m
+      channels: [slack]
+
+    - name: "Service Down"
+      metric: health_check_status
+      condition: "failed"
+      severity: critical
+      duration: 1m
+      channels: [slack, email, pagerduty]
+
+    - name: "Cache Hit Rate Low"
+      metric: cache_hits_total
+      condition: "hit_rate < 50"  # Less than 50% hit rate
+      severity: info
+      duration: 10m
+      channels: [slack]
+
+    - name: "File Upload Failures"
+      metric: file_upload_errors
+      condition: "rate > 5"  # More than 5 errors per minute
+      severity: warning
+      duration: 3m
+      channels: [slack, email]
+
+---
+# ========================================
+# Dashboard Configuration
+# ========================================
+
+dashboards:
+  enabled: true
+
+  # Main Production Dashboard
+  main:
+    name: "Production Overview"
+    refresh_interval: 30s
+
+    panels:
+      - title: "Requests Per Minute"
+        metric: http_requests_total
+        type: line
+        time_range: 1h
+
+      - title: "Response Time (P95)"
+        metric: http_request_duration_ms
+        type: graph
+        percentile: 95
+        time_range: 1h
+
+      - title: "Error Rate"
+        metric: http_request_errors_total
+        type: gauge
+        threshold_warning: 5
+        threshold_critical: 10
+
+      - title: "Active Database Connections"
+        metric: database_connections
+        type: gauge
+        threshold_critical: 20
+
+      - title: "Cache Hit Rate"
+        metric: cache_hits_total
+        type: gauge
+
+      - title: "CPU Usage"
+        metric: cpu_usage_percent
+        type: gauge
+        threshold_warning: 70
+        threshold_critical: 90
+
+      - title: "Memory Usage"
+        metric: memory_usage_percent
+        type: gauge
+        threshold_warning: 80
+        threshold_critical: 95
+
+      - title: "System Health"
+        metric: health_check_status
+        type: status
+
+      - title: "Top Slow Endpoints"
+        metric: http_request_duration_ms
+        type: table
+        group_by: path
+        order_by: duration desc
+        limit: 10
+
+      - title: "Error Breakdown"
+        metric: http_request_errors_total
+        type: pie
+        group_by: error_type
+
+  # Database Performance Dashboard
+  database:
+    name: "Database Performance"
+    refresh_interval: 60s
+
+    panels:
+      - title: "Query Execution Time (P95)"
+        metric: database_query_duration_ms
+        percentile: 95
+
+      - title: "Connections Pool Usage"
+        metric: database_connections
+        type: gauge
+
+      - title: "Active Transactions"
+        metric: database_transactions_active
+        type: gauge
+
+      - title: "Slow Queries"
+        metric: database_query_duration_ms
+        condition: "> 1000"
+
+      - title: "Connection Pool Wait Time"
+        metric: database_pool_wait_ms
+        percentile: 95
+
+  # Application Logs Dashboard
+  logs:
+    name: "Application Logs"
+    refresh_interval: 30s
+
+    filters:
+      level: [ERROR, WARNING]
+
+    panels:
+      - title: "Recent Errors"
+        type: table
+        limit: 50
+
+      - title: "Error Distribution"
+        type: pie
+        group_by: error_type
+
+      - title: "Error Timeline"
+        type: timeline
+        time_range: 24h
+
+---
+# ========================================
+# Retention Policies
+# ========================================
+
+retention:
+  metrics:
+    high_resolution: 7d      # 7 days of 1-minute data
+    medium_resolution: 30d   # 30 days of 5-minute data
+    low_resolution: 1y       # 1 year of 1-hour data
+
+  logs:
+    application_logs: 30d    # 30 days
+    error_logs: 90d          # 90 days
+    security_logs: 180d      # 180 days
+    access_logs: 14d         # 14 days
+
+---
+# ========================================
+# Backup and Disaster Recovery
+# ========================================
+
+backup:
+  enabled: true
+
+  database:
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    retention_days: 30
+    backup_location: "/backups/postgres"
+    compression: gzip
+
+  logs:
+    schedule: "0 3 * * 0"  # Weekly on Sunday at 3 AM
+    retention_days: 90
+    backup_location: "/backups/logs"
+
+---
+# ========================================
+# Security and Compliance
+# ========================================
+
+security:
+  enabled: true
+
+  audit_logging:
+    enabled: true
+    log_level: INFO
+    events:
+      - user_authentication
+      - api_key_creation
+      - permission_changes
+      - data_access
+      - security_events
+
+  compliance:
+    standards:
+      - gdpr
+      - ccpa
+
+    requirements:
+      - log_all_data_access
+      - encrypt_sensitive_logs
+      - maintain_audit_trail
+      - regular_security_audits
+
+---
+# ========================================
+# Notification Rules
+# ========================================
+
+notifications:
+  quiet_hours:
+    enabled: false
+    start: "22:00"
+    end: "08:00"
+    timezone: "UTC"
+
+    # Only critical alerts during quiet hours
+    alert_severity: critical
+
+  escalation:
+    rules:
+      - condition: "alert not acknowledged for 15 minutes"
+        action: "escalate to manager"
+
+      - condition: "critical alert for 30 minutes"
+        action: "escalate to director"
+
+---
+# ========================================
+# Integration Services
+# ========================================
+
+integrations:
+  newrelic:
+    enabled: false
+    license_key: ${NEWRELIC_LICENSE_KEY}
+    app_name: data-management-system
+
+  datadog:
+    enabled: false
+    api_key: ${DATADOG_API_KEY}
+    app_key: ${DATADOG_APP_KEY}
+
+  prometheus:
+    enabled: false
+    scrape_interval: 15s
+
+  grafana:
+    enabled: true
+    url: http://localhost:3000
+    api_key: ${GRAFANA_API_KEY}
+
+---
+# End of Monitoring Configuration

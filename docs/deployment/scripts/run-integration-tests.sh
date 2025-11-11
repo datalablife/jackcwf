@@ -87,7 +87,7 @@ id,name,email,age
 EOF
 
     # 上传文件
-    response=$(curl -s -X POST \
+    response=$(curl -sL -X POST \
         -F "file=@$test_file" \
         -F "data_source_id=1" \
         "$BACKEND_URL/api/file-uploads" 2>/dev/null)
@@ -107,7 +107,7 @@ EOF
 test_file_list_api() {
     log_info "测试文件列表 API..."
 
-    response=$(curl -s -X GET "$BACKEND_URL/api/file-uploads?skip=0&limit=20" 2>/dev/null)
+    response=$(curl -sL -X GET "$BACKEND_URL/api/file-uploads?skip=0&limit=20" 2>/dev/null)
 
     if echo "$response" | grep -q "items"; then
         log_success "文件列表 API 测试通过"
