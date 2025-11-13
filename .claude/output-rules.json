@@ -1,0 +1,229 @@
+{
+  "outputRules": {
+    "priority": "root-directory-first",
+    "description": "文件输出优先级规则 - 优先输出到根目录",
+
+    "fileTypeMapping": {
+      "reportFiles": {
+        "patterns": [
+          "*report*.md",
+          "*REPORT*.md",
+          "ANALYSIS_REPORT.md",
+          "*_analysis.md",
+          "*分析报告*.md"
+        ],
+        "outputLocation": "docs/reference",
+        "priority": 2,
+        "description": "分析报告、评估报告等报告类文件"
+      },
+
+      "summaryFiles": {
+        "patterns": [
+          "*summary*.md",
+          "*SUMMARY*.md",
+          "SUMMARY.md",
+          "*总结*.md",
+          "*摘要*.md"
+        ],
+        "outputLocation": "docs/reference",
+        "priority": 2,
+        "description": "总结性文档、摘要文档"
+      },
+
+      "guidanceFiles": {
+        "patterns": [
+          "*guide*.md",
+          "*GUIDE*.md",
+          "*指南*.md",
+          "*手册*.md",
+          "IMPLEMENTATION_GUIDE.md",
+          "ARCHITECTURE_GUIDE.md"
+        ],
+        "outputLocation": "docs/guides",
+        "priority": 2,
+        "description": "指导性文档、实现指南、架构指南"
+      },
+
+      "roadmapFiles": {
+        "patterns": [
+          "*roadmap*.md",
+          "*ROADMAP*.md",
+          "*路线图*.md",
+          "*计划*.md",
+          "ACTION_PLAN.md",
+          "IMPLEMENTATION_PLAN.md"
+        ],
+        "outputLocation": "docs/guides",
+        "priority": 2,
+        "description": "路线图、计划、行动方案"
+      },
+
+      "maintenanceFiles": {
+        "patterns": [
+          "*maintenance*.md",
+          "*MAINTENANCE*.md",
+          "*维护*.md",
+          "*checklist*.md",
+          "*清单*.md"
+        ],
+        "outputLocation": "docs/guides",
+        "priority": 2,
+        "description": "维护文档、检查清单"
+      },
+
+      "referenceFiles": {
+        "patterns": [
+          "*reference*.md",
+          "*REFERENCE*.md",
+          "*参考*.md",
+          "API_REFERENCE.md"
+        ],
+        "outputLocation": "docs/reference",
+        "priority": 2,
+        "description": "参考文档"
+      },
+
+      "deploymentFiles": {
+        "patterns": [
+          "*deployment*.md",
+          "*DEPLOYMENT*.md",
+          "*部署*.md"
+        ],
+        "outputLocation": "docs/deployment",
+        "priority": 2,
+        "description": "部署文档"
+      },
+
+      "integrationFiles": {
+        "patterns": [
+          "*integration*.md",
+          "*INTEGRATION*.md",
+          "*集成*.md"
+        ],
+        "outputLocation": "docs/integrations",
+        "priority": 2,
+        "description": "集成文档"
+      },
+
+      "developmentFiles": {
+        "patterns": [
+          "*development*.md",
+          "*DEVELOPMENT*.md",
+          "*开发*.md"
+        ],
+        "outputLocation": "docs/guides/developer",
+        "priority": 2,
+        "description": "开发指南"
+      },
+
+      "infrastructureFiles": {
+        "patterns": [
+          "CLAUDE.md",
+          "progress.md",
+          "progress.archive.md"
+        ],
+        "outputLocation": "root",
+        "priority": 1,
+        "description": "项目基础设施文件 - 必须保留在根目录"
+      }
+    },
+
+    "rootPriorityFiles": {
+      "description": "必须输出到根目录的文件 - Priority 1",
+      "rules": [
+        {
+          "type": "infrastructure",
+          "files": ["CLAUDE.md", "progress.md", "progress.archive.md"],
+          "extensions": [".md"],
+          "force_root": true
+        },
+        {
+          "type": "report",
+          "keywords": ["分析", "报告", "评估", "诊断"],
+          "extensions": [".md", ".txt"],
+          "force_root": false
+        },
+        {
+          "type": "summary",
+          "keywords": ["总结", "摘要", "概述", "汇总"],
+          "extensions": [".md", ".txt"],
+          "force_root": false
+        },
+        {
+          "type": "guidance",
+          "keywords": ["指南", "手册", "实现", "架构"],
+          "extensions": [".md"],
+          "force_root": false
+        },
+        {
+          "type": "plan",
+          "keywords": ["计划", "路线图", "行动", "方案"],
+          "extensions": [".md", ".txt"],
+          "force_root": false
+        }
+      ]
+    },
+
+    "excludeFromDocs": {
+      "description": "不应该归档到docs的文件类型（已清空 - 所有文件现在都可以按Priority规则存档）",
+      "patterns": []
+    },
+
+    "enforcementRules": {
+      "description": "强制执行规则",
+      "rules": [
+        {
+          "rule": "root_priority_enforcement",
+          "description": "优先级为1的文件必须在根目录生成",
+          "action": "block_subdirectory_output",
+          "enforce": true
+        },
+        {
+          "rule": "no_unnecessary_nesting",
+          "description": "避免不必要的目录嵌套",
+          "action": "warn_on_deep_nesting",
+          "max_depth": 2
+        },
+        {
+          "rule": "override_archive_rules",
+          "description": "输出规则优先于存档规范",
+          "action": "apply_output_rules_first",
+          "enforce": true
+        }
+      ]
+    },
+
+    "outputDirectoryHierarchy": {
+      "root": {
+        "priority": 1,
+        "description": "项目根目录 - 最高优先级输出位置",
+        "fileTypes": [
+          "infrastructure",
+          "reports",
+          "summaries",
+          "guidance",
+          "plans",
+          "roadmaps"
+        ]
+      },
+      "docs": {
+        "priority": 2,
+        "description": "文档目录 - 参考、部署、集成等",
+        "subdirectories": {
+          "reference": "参考文档",
+          "deployment": "部署文档",
+          "integrations": "集成文档",
+          "guides": "指南文档"
+        }
+      }
+    }
+  },
+
+  "environmentVariables": {
+    "CLAUDE_OUTPUT_PRIORITY": "root-first",
+    "CLAUDE_FORCE_ROOT_OUTPUT": "true",
+    "CLAUDE_REPORT_LOCATION": "root",
+    "CLAUDE_SUMMARY_LOCATION": "root",
+    "CLAUDE_GUIDE_LOCATION": "root"
+  }
+}
