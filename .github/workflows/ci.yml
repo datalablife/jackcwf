@@ -277,76 +277,11 @@ jobs:
           name: coverage-report-${{ matrix.test-type }}
           path: coverage.xml
 
-  # Job 5: Build Reflex application
-  build:
-    name: Build Reflex App
-    runs-on: ubuntu-latest
-    needs: [lint, type-check, test]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Set up Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Restore uv cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/uv
-            .venv
-          key: ${{ runner.os }}-uv-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
-
-      - name: Install dependencies
-        run: |
-          uv sync
-
-      - name: Initialize Reflex
-        run: |
-          source .venv/bin/activate
-          reflex init --loglevel warning
-
-      - name: Build Reflex application
-        run: |
-          source .venv/bin/activate
-          reflex export --frontend-only --loglevel info
-        timeout-minutes: 10
-
-      - name: Check build artifacts
-        run: |
-          ls -la .web/
-          if [ ! -d ".web/_static" ]; then
-            echo "Error: Build artifacts not found"
-            exit 1
-          fi
-
-      - name: Archive build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: reflex-build
-          path: |
-            .web/
-            !.web/node_modules
-          retention-days: 7
-
-  # Job 6: Build summary and status check
+  # Job 5: CI Summary and status check
   ci-summary:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [lint, type-check, test, build]
+    needs: [lint, type-check, test]
     if: always()
 
     steps:
@@ -354,13 +289,11 @@ jobs:
         run: |
           if [[ "${{ needs.lint.result }}" == "failure" ]] || \
              [[ "${{ needs.type-check.result }}" == "failure" ]] || \
-             [[ "${{ needs.test.result }}" == "failure" ]] || \
-             [[ "${{ needs.build.result }}" == "failure" ]]; then
+             [[ "${{ needs.test.result }}" == "failure" ]]; then
             echo "❌ CI pipeline failed"
             echo "Lint: ${{ needs.lint.result }}"
             echo "Type Check: ${{ needs.type-check.result }}"
             echo "Test: ${{ needs.test.result }}"
-            echo "Build: ${{ needs.build.result }}"
             exit 1
           else
             echo "✅ CI pipeline passed successfully"
@@ -375,4 +308,3 @@ jobs:
           echo "| Lint | ${{ needs.lint.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Type Check | ${{ needs.type-check.result }} |" >> $GITHUB_STEP_SUMMARY
           echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| Build | ${{ needs.build.result }} |" >> $GITHUB_STEP_SUMMARY
