@@ -1,60 +1,147 @@
-# Simplified Dockerfile for Reflex Application with Coolify compatibility
-# This Dockerfile is optimized for Coolify deployment
-# For local development, use: uv sync && uv run reflex run
+# Production Dockerfile for FastAPI Backend + React Frontend
+# Optimized for containerized deployment on Coolify with proper signal handling
+# Multi-stage build for minimal final image size
 
-ARG PYTHON_VERSION=3.12
+# =============================================================================
+# Build Arguments
+# =============================================================================
+ARG PYTHON_VERSION=3.12-slim
+ARG NODE_VERSION=20-alpine
 
-FROM python:${PYTHON_VERSION}-slim
+# =============================================================================
+# Stage 1: Frontend Build
+# Builds React application with Vite
+# =============================================================================
+FROM node:${NODE_VERSION} AS frontend-builder
 
-WORKDIR /app
+LABEL stage=frontend-build
 
-# Install system dependencies for Python packages and Node.js
-RUN apt-get update && apt-get install -y \
+WORKDIR /build/frontend
+
+# Copy package files
+COPY frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci --prefer-offline --no-audit
+
+# Copy source code
+COPY frontend .
+
+# Build React application
+RUN npm run build
+
+# =============================================================================
+# Stage 2: Backend Dependencies
+# Installs Python dependencies using Poetry
+# =============================================================================
+FROM python:${PYTHON_VERSION} AS backend-builder
+
+LABEL stage=backend-build
+
+WORKDIR /build/backend
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     curl \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Node.js for Reflex frontend
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && \
-    apt-get install -y nodejs && \
-    rm -rf /var/lib/apt/lists/*
-
-# Install uv package manager
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:$PATH"
+# Install Poetry
+RUN pip install --no-cache-dir poetry
 
 # Copy dependency files
-COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml backend/poetry.lock ./
 
-# Install Python dependencies (non-dev for production)
-# uv creates .venv in the current directory
-RUN uv sync --no-dev
+# Install Python dependencies
+RUN poetry config virtualenvs.in-project true && \
+    poetry install --no-dev --no-interaction --no-ansi
 
-# Copy application code
-COPY . .
+# =============================================================================
+# Stage 3: Final Production Image
+# Combines frontend built assets and backend runtime
+# =============================================================================
+FROM python:${PYTHON_VERSION}
 
-# Ensure Python path includes the virtual environment
-ENV VIRTUAL_ENV=/app/.venv
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-ENV PYTHONPATH=/app:$PYTHONPATH
-RUN python -m reflex init --loglevel warning && \
-    python -m reflex export --frontend-only --loglevel info
+LABEL maintainer="Cloud Dev Team"
+LABEL description="Production container for FastAPI + React application"
 
-# Set environment variables
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV REFLEX_ENV=production
-ENV FRONTEND_PORT=3000
-ENV BACKEND_PORT=8000
+# Set working directory
+WORKDIR /app
 
-# Expose ports
-EXPOSE 3000 8000
+# ============================================================================
+# System Setup and Environment
+# ============================================================================
 
-# Health check - extended start period for Reflex app compilation
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
-    CMD curl -f http://localhost:3000/ || exit 1
+# Install runtime dependencies only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
 
-# Start application
-CMD ["python", "-m", "reflex", "run", "--env", "production"]
+# Python environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH=/app:$PYTHONPATH \
+    PATH="/app/.venv/bin:$PATH"
+
+# Application environment
+ENV APP_ENV=production \
+    ENVIRONMENT=production
+
+# ============================================================================
+# Copy Application Files
+# ============================================================================
+
+# Copy backend virtual environment from builder
+COPY --from=backend-builder /build/backend/.venv /app/.venv
+
+# Copy backend source code
+COPY backend/src /app/backend/src
+COPY backend/migrations /app/backend/migrations
+COPY backend/alembic.ini /app/backend/
+COPY backend/pyproject.toml backend/poetry.lock /app/backend/
+
+# Copy frontend built assets
+COPY --from=frontend-builder /build/frontend/dist /app/frontend/dist
+
+# Copy scripts directory
+COPY scripts /app/scripts
+
+# Copy container entrypoint and helper scripts
+COPY scripts/container/entrypoint.sh /app/entrypoint.sh
+COPY scripts/lib /app/scripts/lib
+COPY scripts/config /app/scripts/config
+
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
+# ============================================================================
+# Health Check Configuration
+# ============================================================================
+
+# Health check for container orchestration systems
+# - interval: Check every 30 seconds
+# - timeout: Wait 10 seconds for response
+# - start-period: Wait 60 seconds before first check (allows migration time)
+# - retries: Fail after 3 consecutive failures
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# ============================================================================
+# Port Exposure
+# ============================================================================
+
+# Backend API port
+EXPOSE 8000
+
+# ============================================================================
+# Container Runtime Configuration
+# ============================================================================
+
+# Use entrypoint script for proper initialization and signal handling
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Default command (can be overridden)
+CMD ["start"]

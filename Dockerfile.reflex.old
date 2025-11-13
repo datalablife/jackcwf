@@ -1,0 +1,98 @@
+# Production Dockerfile for Reflex Application with Coolify
+# Optimized for containerized deployment with proper startup handling
+
+# =============================================================================
+# Build Arguments
+# =============================================================================
+ARG PYTHON_VERSION=3.12
+ARG NODE_VERSION=20
+
+# =============================================================================
+# Base Stage: System Dependencies
+# =============================================================================
+FROM python:${PYTHON_VERSION}-slim AS base
+
+# Install system dependencies
+# - build-essential: C/C++ compiler for Python packages
+# - libpq-dev: PostgreSQL client library
+# - curl: Health checks and downloads
+# - git: Sometimes needed by Python packages
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js for Reflex frontend
+RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
+    apt-get install -y nodejs && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# =============================================================================
+# Dependencies Stage: Python Package Installation
+# =============================================================================
+FROM base AS dependencies
+
+# Install uv package manager
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:$PATH"
+
+# Copy dependency files
+COPY pyproject.toml uv.lock ./
+
+# Install Python dependencies (production only, no dev packages)
+# This creates a .venv in /app/.venv
+RUN uv sync --no-dev --locked
+
+# =============================================================================
+# Application Stage: Final Production Image
+# =============================================================================
+FROM base AS application
+
+# Copy virtual environment from dependencies stage
+COPY --from=dependencies /app/.venv /app/.venv
+
+# Copy uv binary for potential runtime use
+COPY --from=dependencies /root/.cargo/bin/uv /usr/local/bin/uv
+
+# Set Python environment variables
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+ENV PYTHONPATH=/app:$PYTHONPATH
+
+# Python optimization flags
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Copy application code
+COPY . .
+
+# Make entrypoint script executable
+RUN chmod +x /app/entrypoint.sh
+
+# Initialize Reflex and pre-compile frontend
+# This step is crucial for fast container startup
+RUN python -m reflex init --loglevel warning && \
+    python -m reflex export --frontend-only --loglevel info
+
+# Default environment variables (can be overridden)
+ENV REFLEX_ENV=production
+ENV FRONTEND_PORT=3000
+ENV BACKEND_PORT=8000
+
+# Expose ports
+EXPOSE 3000 8000
+
+# Health check
+# - interval: Check every 30 seconds
+# - timeout: Wait 10 seconds for response
+# - start-period: Wait 120 seconds before first check (Reflex needs time to compile)
+# - retries: Fail after 5 consecutive failures
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=5 \
+    CMD curl -f http://localhost:3000/ || exit 1
+
+# Use entrypoint script for proper initialization and signal handling
+ENTRYPOINT ["/app/entrypoint.sh"]
