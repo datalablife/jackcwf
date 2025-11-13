@@ -2,6 +2,9 @@
 
 import reflex as rx
 
+# Import health check page
+from working.health import health_page
+
 
 class LoginState(rx.State):
     """The login page state."""
@@ -200,3 +203,7 @@ def index() -> rx.Component:
 
 app = rx.App()
 app.add_page(index)
+
+# Register health check page for monitoring
+# This is used by Docker HEALTHCHECK and Coolify
+app.add_page(health_page)
