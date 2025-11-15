@@ -72,6 +72,11 @@ dependencies = [
     "pandas>=2.1.3",
     "aiofiles>=23.2.1",
 
+    # Memory & AI
+    "memori>=0.0.1",
+    "anthropic>=0.25.0",
+    "litellm>=1.0.0",
+
     # Utilities
     "redis>=6.4.0",
     "click>=8.3.0",
