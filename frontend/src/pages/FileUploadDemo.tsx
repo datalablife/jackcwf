@@ -12,6 +12,7 @@ import {
 } from '../components/file-upload'
 import { FilePreview, PreviewTable } from '../components/file-preview'
 import type { FileMetadata } from '../components/file-preview/FilePreview'
+import { uploadFile } from '../services/file.api'
 
 export function FileUploadDemo() {
   const [uploadProgress, setUploadProgress] = useState(0)
@@ -22,46 +23,52 @@ export function FileUploadDemo() {
   const [currentFile, setCurrentFile] = useState<FileMetadata | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  // 模拟文件上传
+  // 真实文件上传 - 调用后端 API
   const handleFileUpload = async (file: File, dataSourceId: number) => {
     console.log('上传文件:', file.name, '数据源:', dataSourceId)
 
     setIsUploading(true)
     setUploadStatus('uploading')
     setErrorMessage(null)
+    setUploadProgress(0)
 
-    // 模拟上传进度
-    let progress = 0
-    const interval = setInterval(() => {
-      progress += Math.random() * 30
-      if (progress >= 100) {
-        progress = 100
-        clearInterval(interval)
-        setUploadProgress(100)
-        setUploadStatus('completed')
-        setIsUploading(false)
+    try {
+      // 调用真实的后端 API
+      const result = await uploadFile(file, dataSourceId, (progress) => {
+        console.log('上传进度:', progress.percentage + '%')
+        setUploadProgress(progress.percentage)
+      })
 
-        // 模拟返回的文件元数据
-        setCurrentFile({
-          id: 1,
-          filename: file.name,
-          file_format: file.name.split('.').pop() || 'unknown',
-          file_size: file.size,
-          row_count: 1000,
-          column_count: 5,
-          parse_status: 'success',
-          created_at: new Date().toISOString(),
-          metadata: {
-            rows_count: 1000,
-            columns_count: 5,
-            column_names: ['id', 'name', 'email', 'age', 'status'],
-            data_types: ['integer', 'string', 'string', 'integer', 'string'],
-          },
-        })
-      } else {
-        setUploadProgress(progress)
-      }
-    }, 300)
+      // 上传成功 - 设置文件元数据
+      setUploadProgress(100)
+      setUploadStatus('completed')
+      setCurrentFile({
+        id: result.id,
+        filename: result.filename,
+        file_format: result.file_format,
+        file_size: result.file_size,
+        row_count: result.row_count,
+        column_count: result.column_count,
+        parse_status: result.parse_status,
+        created_at: result.created_at,
+        metadata: {
+          rows_count: result.row_count || 0,
+          columns_count: result.column_count || 0,
+          column_names: [],
+          data_types: [],
+        },
+      })
+
+      console.log('文件上传成功:', result)
+    } catch (error) {
+      // 上传失败 - 显示错误信息
+      setUploadStatus('error')
+      const errorMsg = error instanceof Error ? error.message : '上传失败: 网络错误或服务器问题'
+      setErrorMessage(errorMsg)
+      console.error('文件上传错误:', error)
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   // 模拟文件下拉上传
