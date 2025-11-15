@@ -54,6 +54,7 @@ class MemoriConfig(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra environment variables from .env
 
     @property
     def db_connection_string(self) -> str:
