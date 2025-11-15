@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "working"
 version = "0.1.0"
-description = "Coolify 云开发工作区 - Reflex 全栈应用开发项目"
+description = "AI Data Analyzer - Full-stack application with React frontend and FastAPI backend"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -13,7 +13,8 @@ authors = [
 ]
 requires-python = ">=3.12"
 keywords = [
-    "reflex",
+    "fastapi",
+    "react",
     "fullstack",
     "web development",
     "python",
@@ -29,16 +30,16 @@ classifiers = [
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
-    "Topic :: Software Development :: Libraries :: Application Frameworks",
+    "Topic :: Software Development :: Libraries :: Web Frameworks",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 
 dependencies = [
     # Web Framework & Server
-    "reflex==0.8.16",
-    "reflex-hosting-cli==0.1.58",
+    "fastapi==0.104.0",
     "starlette==0.48.0",
+    "uvicorn[standard]==0.24.0",
     "granian==2.5.5",
 
     # Database & ORM
@@ -46,6 +47,7 @@ dependencies = [
     "sqlmodel==0.0.27",
     "alembic==1.17.0",
     "psycopg2-binary==2.9.11",
+    "asyncpg==0.29.0",
 
     # HTTP & WebSocket
     "httpx==0.28.1",
