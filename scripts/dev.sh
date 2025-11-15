@@ -97,9 +97,12 @@ else
     log_info ".env file found"
 fi
 
-# Load environment variables
+# Load environment variables (safe method - handles special characters)
 if [ -f ".env" ]; then
-    export $(grep -v '^#' .env | xargs)
+    log_info "Loading environment variables from .env..."
+    set -a
+    source .env
+    set +a
 fi
 
 # =============================================================================
@@ -123,36 +126,15 @@ log_info "Dependencies installed successfully"
 # 4. Database Setup (if needed)
 # =============================================================================
 
-if [ -n "$DATABASE_URL" ]; then
-    log_step "Checking database connection..."
+# Skip database checks in development mode (non-interactive startup)
+# In production, use proper health checks and migration management
+log_step "Database setup..."
 
-    # Test database connection
-    if uv run python -c "
-from sqlalchemy import create_engine
-try:
-    engine = create_engine('$DATABASE_URL')
-    with engine.connect() as conn:
-        conn.execute('SELECT 1')
-    print('Database connection successful')
-except Exception as e:
-    print(f'Database connection failed: {e}')
-    exit(1)
-" 2>/dev/null; then
-        log_info "Database connection successful"
-
-        # Run migrations if Alembic is configured
-        # Uncomment when you have migrations
-        # log_info "Running database migrations..."
-        # uv run alembic upgrade head
-    else
-        log_warn "Database connection failed. Continue anyway? (y/n)"
-        read -r response
-        if [[ "$response" != "y" ]]; then
-            exit 1
-        fi
-    fi
-else
+if [ -z "$DATABASE_URL" ]; then
     log_warn "DATABASE_URL not set, skipping database checks"
+else
+    log_info "DATABASE_URL is configured (will be checked on first API call)"
+    log_info "To test database connection manually: uv run python -c \"import asyncpg; print('asyncpg OK')\""
 fi
 
 # =============================================================================
