@@ -162,10 +162,10 @@ echo ""
 
 # Start Reflex in development mode
 # This enables hot reload and verbose logging
+# Note: --frontend-host is not supported in current Reflex version
 uv run reflex run \
     --env dev \
     --loglevel info \
     --backend-host 0.0.0.0 \
     --backend-port 8000 \
-    --frontend-host 0.0.0.0 \
     --frontend-port 3000
