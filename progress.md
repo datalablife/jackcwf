@@ -307,7 +307,102 @@ docs/reference/organization/
 
 ---
 
+### [COMPLETED] Complete Reflex Framework Removal & Dev Startup Modernization
+**日期**: 2025-11-15
+**提交**: d0555f5 "refactor: Complete Reflex framework removal and modernize dev startup"
+
+**任务概述**:
+成功完全移除 Reflex (v0.8.16) 框架，并现代化开发启动流程，使用独立的前端 (React + Vite) 和后端 (FastAPI + Uvicorn) 服务。
+
+**变更内容**:
+
+1. **pyproject.toml 清理**:
+   - ✅ 移除 Reflex (0.8.16) 依赖
+   - ✅ 移除 reflex-hosting-cli (0.1.58) 依赖
+   - ✅ 添加 FastAPI (0.104.0) 作为后端框架
+   - ✅ 添加 Uvicorn (0.24.0) 作为 ASGI 服务器
+   - ✅ 添加 asyncpg (0.29.0) 用于异步 PostgreSQL
+   - ✅ 更新 description 从 "Reflex 全栈应用" 到 "Full-stack application with React frontend and FastAPI backend"
+   - ✅ 更新 keywords: reflex → fastapi, react
+   - ✅ 更新 classifiers 以反映现代框架
+
+2. **配置文件移除**:
+   - ✅ 删除 `rxconfig.py` (Reflex 配置文件)
+   - ✅ 删除 `.web/` 目录 (Reflex 构建产物)
+
+3. **开发启动脚本完全重写** (`scripts/dev.sh`):
+   - ✅ 新建统一启动脚本用于前后端
+   - ✅ 前端: React 19 + Vite 运行在 3000 端口
+   - ✅ 后端: FastAPI + Uvicorn 运行在 8000 端口
+   - ✅ 独立服务管理，带进程 ID 追踪
+   - ✅ 正确的 SIGINT/SIGTERM 信号处理，优雅关闭
+   - ✅ 统一日志输出，带颜色编码
+   - ✅ 自动依赖安装 (npm/uv sync)
+   - ✅ 非交互式启动 (无用户提示)
+
+4. **服务启动细节**:
+   - 后端启动命令: `uv run python -m uvicorn backend.src.main:app --reload`
+   - 前端启动命令: `npm run dev --prefix frontend`
+   - 两个服务在后台并发运行
+   - 正确的清理处理器，在退出时杀死两个服务
+   - 后端和前端启动之间延迟 2 秒，保证稳定性
+
+**架构优势**:
+- ✅ 更清晰的项目结构，无不必要的框架开销
+- ✅ 独立的前后端工具链
+- ✅ 更好的开发体验 (两端都支持热重载)
+- ✅ 更简单的部署 (无 Reflex 打包)
+- ✅ 现代异步 Python 模式
+- ✅ 支持正确的 API 文档 (FastAPI Swagger)
+
+**向后兼容性**:
+- ✅ 手动启动仍可用: `npm run dev` (前端), `uvicorn` (后端)
+- ✅ 可以独立启动单个服务
+- ✅ 旧的 Reflex 引用完全移除
+
+**测试状态**:
+- ✅ 脚本语法验证
+- ✅ 启动配置验证
+- ✅ Git 状态清洁
+
+**关键统计**:
+- 8 个文件变更
+- 171 行新增, 1211 行删除 (净减: -1040 行 = 更简洁的代码)
+- Reflex 依赖完全消除
+
+**决策上下文**:
+此次移除的原因:
+1. 前端 (React + Vite) 已经独立，未使用 Reflex
+2. 后端 (FastAPI) 已经独立，未使用 Reflex
+3. Reflex 增加了不必要的开销和复杂性
+4. 新的启动脚本提供了更清晰、更易维护的方法
+5. 符合现代全栈开发实践
+
+**影响范围**:
+- ✅ 项目结构更简洁
+- ✅ 依赖更少，启动更快
+- ✅ 开发体验更好
+- ✅ 部署流程更简单
+- ✅ 文档更易理解
+
+**文件变更详情**:
+```
+backend/pyproject.toml           | 修改 (移除 Reflex, 添加 FastAPI/Uvicorn)
+rxconfig.py                      | 删除
+.web/                            | 删除目录
+scripts/dev.sh                   | 完全重写
+README.md                        | 更新启动说明
+docs/deployment/guides/          | 更新部署文档
+```
+
+**相关文档**:
+- [FastAPI 官方文档](https://fastapi.tiangolo.com/)
+- [Uvicorn 官方文档](https://www.uvicorn.org/)
+- [Vite 官方文档](https://vitejs.dev/)
+
+---
+
 **项目状态**: ✅ 所有工作完成
 **下一步**: 代码提交和生产部署
-**最后更新**: 2025-11-15
+**最后更新**: 2025-11-15 18:00
 

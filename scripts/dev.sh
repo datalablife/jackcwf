@@ -147,9 +147,8 @@ if [ ! -d "frontend/node_modules" ]; then
     log_info "Frontend dependencies not found, installing..."
     npm install --prefix frontend
 else
-    log_info "Frontend dependencies found"
-    # Ensure latest dependencies
-    npm ci --prefix frontend
+    log_info "Frontend dependencies found, checking for updates..."
+    npm install --prefix frontend
 fi
 
 log_info "Frontend dependencies installed successfully"
@@ -219,7 +218,8 @@ echo ""
 
 # Start backend in background
 log_service "BACKEND" "Starting FastAPI server on port 8000..."
-uv run python -m uvicorn backend.src.main:app \
+PYTHONPATH="$PROJECT_ROOT/backend:$PYTHONPATH" \
+uv run python -m uvicorn src.main:app \
     --reload \
     --host 0.0.0.0 \
     --port 8000 \
