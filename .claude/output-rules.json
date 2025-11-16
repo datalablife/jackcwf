@@ -129,37 +129,21 @@
     },
 
     "rootPriorityFiles": {
-      "description": "必须输出到根目录的文件 - Priority 1",
+      "description": "必须输出到根目录的文件 - Priority 1 (仅项目状态标记)",
       "rules": [
         {
           "type": "infrastructure",
           "files": ["CLAUDE.md", "progress.md", "progress.archive.md"],
           "extensions": [".md"],
-          "force_root": true
+          "force_root": true,
+          "description": "项目基础设施文件"
         },
         {
-          "type": "report",
-          "keywords": ["分析", "报告", "评估", "诊断"],
+          "type": "status_marker",
+          "keywords": ["COMPLETE", "COMPLETED", "READY", "DONE", "FINISHED", "SUCCESS", "完成", "就绪"],
           "extensions": [".md", ".txt"],
-          "force_root": false
-        },
-        {
-          "type": "summary",
-          "keywords": ["总结", "摘要", "概述", "汇总"],
-          "extensions": [".md", ".txt"],
-          "force_root": false
-        },
-        {
-          "type": "guidance",
-          "keywords": ["指南", "手册", "实现", "架构"],
-          "extensions": [".md"],
-          "force_root": false
-        },
-        {
-          "type": "plan",
-          "keywords": ["计划", "路线图", "行动", "方案"],
-          "extensions": [".md", ".txt"],
-          "force_root": false
+          "force_root": true,
+          "description": "项目状态标记 - 用于表示项目生命周期阶段"
         }
       ]
     },
@@ -196,34 +180,30 @@
     "outputDirectoryHierarchy": {
       "root": {
         "priority": 1,
-        "description": "项目根目录 - 最高优先级输出位置",
+        "description": "项目根目录 - 项目状态标记和基础设施文件",
         "fileTypes": [
           "infrastructure",
-          "reports",
-          "summaries",
-          "guidance",
-          "plans",
-          "roadmaps"
+          "status_markers"
         ]
       },
       "docs": {
         "priority": 2,
-        "description": "文档目录 - 参考、部署、集成等",
+        "description": "文档目录 - 所有内容文档（指南、实现、总结、报告等）",
         "subdirectories": {
-          "reference": "参考文档",
+          "reference": "参考文档、报告、总结",
           "deployment": "部署文档",
           "integrations": "集成文档",
-          "guides": "指南文档"
+          "guides": "指南、实现文档、计划、路线图"
         }
       }
     }
   },
 
   "environmentVariables": {
-    "CLAUDE_OUTPUT_PRIORITY": "root-first",
-    "CLAUDE_FORCE_ROOT_OUTPUT": "true",
-    "CLAUDE_REPORT_LOCATION": "root",
-    "CLAUDE_SUMMARY_LOCATION": "root",
-    "CLAUDE_GUIDE_LOCATION": "root"
+    "CLAUDE_OUTPUT_PRIORITY": "status-markers-root-content-docs",
+    "CLAUDE_FORCE_ROOT_OUTPUT": "status-markers-only",
+    "CLAUDE_STATUS_MARKER_LOCATION": "root",
+    "CLAUDE_CONTENT_DOC_LOCATION": "docs",
+    "CLAUDE_INFRASTRUCTURE_LOCATION": "root"
   }
 }
