@@ -38,7 +38,7 @@ class ResponseStructuringMiddleware(BaseHTTPMiddleware):
             call_next: Next middleware/handler
 
         Returns:
-            Response
+            Response with structured body
         """
         # Add request ID to state (for tracking)
         import uuid
@@ -61,7 +61,12 @@ class ResponseStructuringMiddleware(BaseHTTPMiddleware):
         try:
             original_data = json.loads(body) if body else None
         except json.JSONDecodeError:
-            return response
+            # If we can't parse it, return a new JSONResponse with the raw body
+            return JSONResponse(
+                content=original_data,
+                status_code=response.status_code,
+                headers=dict(response.headers),
+            )
 
         # Structure the response
         structured = self.structure_response(
@@ -71,7 +76,8 @@ class ResponseStructuringMiddleware(BaseHTTPMiddleware):
             request_id=request.state.request_id,
         )
 
-        # Return structured response
+        # Return NEW JSONResponse with structured body
+        # This avoids consuming the original response iterator
         return JSONResponse(
             content=structured,
             status_code=response.status_code,

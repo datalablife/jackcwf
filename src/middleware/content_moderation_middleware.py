@@ -1,12 +1,13 @@
 """Content moderation middleware for safety checks and rate limiting."""
 
+import asyncio
 import logging
 import time
 from typing import Dict
 
 from fastapi import Request, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,28 @@ class ContentModerationMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         # Store request timestamps per user: {user_id: [timestamps]}
         self.request_times: Dict[str, list] = {}
+        self.max_age = 3600  # Keep timestamps for 1 hour max
+        # Start cleanup task
+        self._cleanup_task = None
+
+    async def cleanup_old_timestamps(self):
+        """Periodically clean up old request timestamps to prevent memory leak."""
+        while True:
+            try:
+                await asyncio.sleep(300)  # Run cleanup every 5 minutes
+                current_time = time.time()
+                # Remove entries older than max_age
+                for user_id in list(self.request_times.keys()):
+                    if self.request_times[user_id]:
+                        oldest_time = min(self.request_times[user_id])
+                        if current_time - oldest_time > self.max_age:
+                            self.request_times[user_id] = []
+                    # Remove empty user entries
+                    if not self.request_times[user_id]:
+                        del self.request_times[user_id]
+                logger.debug(f"Cleanup: {len(self.request_times)} users remain in rate limit tracking")
+            except Exception as e:
+                logger.error(f"Cleanup task error: {e}")
 
     async def dispatch(self, request: Request, call_next) -> Response:
         """
