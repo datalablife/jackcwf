@@ -406,74 +406,65 @@ async def process_user_message(
             "done": False,
         })
 
-        # Process with agent
-        # In a full implementation, this would use LangChain's streaming
-        # For now, we'll simulate the response
-        agent_response = await agent_service.process_message(
+        final_state = None
+
+        async for event in agent_service.stream_message(
             user_id=user_id,
             conversation_id=str(conversation_id),
             user_message=user_message,
             system_prompt=conversation.system_prompt,
             message_history=message_history,
-        )
+        ):
+            event_type = event.get("type")
 
-        # Send thinking complete
+            if event_type == "content":
+                await websocket.send_json({
+                    "type": "response",
+                    "content": event.get("content", ""),
+                    "done": False,
+                })
+            elif event_type == "tool_call":
+                await websocket.send_json({
+                    "type": "tool_call",
+                    "tool_name": event.get("tool_name"),
+                    "tool_input": event.get("tool_input"),
+                    "call_id": event.get("call_id"),
+                })
+            elif event_type == "tool_result":
+                await websocket.send_json({
+                    "type": "tool_result",
+                    "call_id": event.get("call_id"),
+                    "result": event.get("result"),
+                })
+            elif event_type == "complete_state":
+                final_state = event
+            elif event_type == "error":
+                await websocket.send_json(event)
+
         await websocket.send_json({
             "type": "agent_thinking",
             "content": "Generating response...",
             "done": True,
         })
 
-        # Check for tool calls
-        if agent_response.get("tool_calls"):
-            for tool_call in agent_response["tool_calls"]:
-                # Send tool call notification
-                await websocket.send_json({
-                    "type": "tool_call",
-                    "tool_name": tool_call.get("name"),
-                    "tool_input": tool_call.get("input"),
-                    "call_id": tool_call.get("id"),
-                })
-
-        # Check for tool results
-        if agent_response.get("tool_results"):
-            for tool_result in agent_response["tool_results"]:
-                # Send tool result
-                await websocket.send_json({
-                    "type": "tool_result",
-                    "call_id": tool_result.get("id"),
-                    "result": tool_result.get("output"),
-                })
-
-        # Stream response text
-        response_text = agent_response.get("agent_response", "I processed your message.")
-
-        # Simulate streaming by sending chunks
-        chunk_size = 50
-        for i in range(0, len(response_text), chunk_size):
-            chunk = response_text[i:i + chunk_size]
-            await websocket.send_json({
-                "type": "response",
-                "content": chunk,
-                "done": i + chunk_size >= len(response_text),
-            })
-            await asyncio.sleep(0.05)  # Small delay for streaming effect
+        if not final_state:
+            raise RuntimeError("Agent stream did not provide completion data")
 
         # Save assistant message
         assistant_msg = await conv_service.add_message(
             conversation_id=conversation_id,
             role="assistant",
-            content=response_text,
-            tool_calls=agent_response.get("tool_calls"),
-            tool_results=agent_response.get("tool_results"),
-            tokens_used=agent_response.get("tokens_used"),
+            content=final_state.get("response", "I processed your message."),
+            tool_calls=final_state.get("tool_calls"),
+            tool_results=final_state.get("tool_results"),
+            tokens_used=final_state.get("tokens_used"),
         )
 
         # Send completion
         await websocket.send_json({
             "type": "complete",
             "message_id": str(assistant_msg.id),
-            "tokens_used": agent_response.get("tokens_used", 0),
+            "tokens_used": final_state.get("tokens_used", 0),
         })
 
         logger.info(f"Completed processing message in conversation {conversation_id}")

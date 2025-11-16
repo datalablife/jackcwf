@@ -2,9 +2,11 @@
 
 import logging
 import os
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import Request, HTTPException, status
+import jwt
+from fastapi import HTTPException, Request, status
+from jwt import ExpiredSignatureError, InvalidTokenError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
@@ -30,6 +32,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         """Initialize middleware."""
         super().__init__(app)
         self.secret_key = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
+        self.algorithms: List[str] = [
+            alg.strip()
+            for alg in os.getenv("JWT_ALGORITHMS", "HS256").split(",")
+            if alg.strip()
+        ]
+        self.expected_audience = os.getenv("JWT_AUDIENCE")
+        self.expected_issuer = os.getenv("JWT_ISSUER")
 
     async def dispatch(self, request: Request, call_next):
         """
@@ -81,32 +90,36 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         """
         Verify JWT token and extract user ID.
 
-        In production, use:
-        - PyJWT library
-        - python-jose
-        - Proper secret management
-
         Args:
             token: JWT token
 
         Returns:
             User ID if valid, None otherwise
         """
-        try:
-            # This is a simplified example
-            # In production, use proper JWT verification:
-            # import jwt
-            # payload = jwt.decode(token, self.secret_key, algorithms=["HS256"])
-            # return payload.get("sub")
-
-            # For now, just validate the token is not empty
-            if token and len(token) > 10:
-                # Placeholder: extract user_id from token
-                # In real implementation, decode the JWT
-                return token[:20]  # Simplified
-
+        if not token:
             return None
 
-        except Exception as e:
-            logger.error(f"Token verification failed: {str(e)}")
+        try:
+            decode_kwargs = {
+                "algorithms": self.algorithms,
+                "options": {"require": ["exp", "sub"]},
+            }
+            if self.expected_audience:
+                decode_kwargs["audience"] = self.expected_audience
+            if self.expected_issuer:
+                decode_kwargs["issuer"] = self.expected_issuer
+
+            payload = jwt.decode(token, self.secret_key, **decode_kwargs)
+            user_id = payload.get("sub")
+            if not user_id:
+                logger.error("JWT missing subject claim")
+                return None
+
+            return str(user_id)
+
+        except ExpiredSignatureError:
+            logger.warning("JWT token expired")
+            return None
+        except InvalidTokenError as exc:
+            logger.error(f"Invalid JWT token: {exc}")
             return None

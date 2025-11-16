@@ -67,7 +67,7 @@ async def get_message(
         msg_repo = MessageRepository(session)
 
         # Get the message
-        message = await msg_repo.get_by_id(message_id)
+        message = await msg_repo.get(message_id)
 
         if not message:
             raise HTTPException(
@@ -140,7 +140,7 @@ async def update_message(
         msg_repo = MessageRepository(session)
 
         # Get the message
-        message = await msg_repo.get_by_id(message_id)
+        message = await msg_repo.get(message_id)
 
         if not message:
             raise HTTPException(
@@ -239,7 +239,7 @@ async def delete_message(
         msg_repo = MessageRepository(session)
 
         # Get the message
-        message = await msg_repo.get_by_id(message_id)
+        message = await msg_repo.get(message_id)
 
         if not message:
             raise HTTPException(

@@ -12,3 +12,6 @@
         - record：使用 progress-recorder 执行增量合并任务
         - archive：使用 progress-recorder 执行快照归档任务
         - recap：阅读 progress.md，回顾项目当前状态（包括但不仅限于关键约束、待办事项、完成时度等）
+
+[代码模块索引]
+        - 需要理解 `src/` 结构时，优先查阅根目录 `MODULE_OVERVIEW.md`。该文档按 FastAPI 应用、API 路由、服务、仓储、中间件与工具等模块总结功能，便于 CLAUDE code 快速定位实现。
