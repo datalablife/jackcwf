@@ -66,18 +66,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add custom middleware (in reverse order - last added runs first)
+# Add custom middleware (in correct order for execution)
+# Due to middleware stacking, last added runs first in request processing
+# Correct execution order: Auth → ContentModeration → MemoryInjection → ResponseStructuring → AuditLogging
 from src.middleware.audit_logging_middleware import AuditLoggingMiddleware
 from src.middleware.response_structuring_middleware import ResponseStructuringMiddleware
 from src.middleware.content_moderation_middleware import ContentModerationMiddleware
 from src.middleware.memory_injection_middleware import MemoryInjectionMiddleware
 from src.middleware.auth_middleware import AuthenticationMiddleware
 
-app.add_middleware(AuditLoggingMiddleware)
-app.add_middleware(ResponseStructuringMiddleware)
-app.add_middleware(ContentModerationMiddleware)
-app.add_middleware(MemoryInjectionMiddleware)
-app.add_middleware(AuthenticationMiddleware)
+# Add in REVERSE order (last added = first executed)
+app.add_middleware(AuditLoggingMiddleware)  # Executes last (logs everything)
+app.add_middleware(ResponseStructuringMiddleware)  # Executes 4th (structures response)
+app.add_middleware(MemoryInjectionMiddleware)  # Executes 3rd (injects memory/context)
+app.add_middleware(ContentModerationMiddleware)  # Executes 2nd (rate limiting, content check)
+app.add_middleware(AuthenticationMiddleware)  # Executes first (auth check)
 
 
 # Global exception handlers

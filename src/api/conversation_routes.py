@@ -4,7 +4,7 @@ import logging
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.config import get_async_session
@@ -24,16 +24,22 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/conversations", tags=["Conversations"])
 
 
-def get_user_id(request) -> str:
-    """Extract user ID from request."""
-    return getattr(request, "state", None).user_id if hasattr(request, "state") else "anonymous"
+async def get_current_user(request: Request) -> str:
+    """Extract user ID from request via FastAPI dependency injection."""
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not authenticated",
+        )
+    return user_id
 
 
 @router.post("", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
 async def create_conversation(
     request_data: CreateConversationRequest,
     session: AsyncSession = Depends(get_async_session),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user),
 ):
     """
     Create a new conversation.
@@ -82,7 +88,7 @@ async def list_conversations(
     skip: int = 0,
     limit: int = 10,
     session: AsyncSession = Depends(get_async_session),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user),
 ):
     """
     List conversations for the user.
@@ -136,7 +142,7 @@ async def list_conversations(
 async def get_conversation(
     conversation_id: UUID,
     session: AsyncSession = Depends(get_async_session),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user),
 ):
     """
     Get a specific conversation.
@@ -186,7 +192,7 @@ async def update_conversation(
     conversation_id: UUID,
     request_data: UpdateConversationRequest,
     session: AsyncSession = Depends(get_async_session),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user),
 ):
     """
     Update a conversation.
@@ -250,7 +256,7 @@ async def update_conversation(
 async def delete_conversation(
     conversation_id: UUID,
     session: AsyncSession = Depends(get_async_session),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user),
 ):
     """
     Delete a conversation (soft delete).
@@ -284,7 +290,7 @@ async def get_conversation_messages(
     conversation_id: UUID,
     limit: int = 50,
     session: AsyncSession = Depends(get_async_session),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user),
 ):
     """
     Get message history for a conversation.
@@ -344,7 +350,7 @@ async def send_message(
     conversation_id: UUID,
     request_data: SendMessageRequest,
     session: AsyncSession = Depends(get_async_session),
-    user_id: str = Depends(get_user_id),
+    user_id: str = Depends(get_current_user),
 ):
     """
     Send a message to a conversation.
