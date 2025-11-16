@@ -1,9 +1,12 @@
 """Base repository with async CRUD operations."""
 
+import logging
 from typing import Generic, TypeVar, Optional, List, Any, Dict
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -35,7 +38,7 @@ class BaseRepository(Generic[T]):
 
     async def create(self, **kwargs) -> T:
         """
-        Create a new record.
+        Create a new record with proper transaction handling.
 
         Args:
             **kwargs: Column values for the model
@@ -45,12 +48,19 @@ class BaseRepository(Generic[T]):
 
         Raises:
             ValueError: If required fields are missing
+            Exception: If database operation fails
         """
         instance = self.model_class(**kwargs)
         self.session.add(instance)
-        await self.session.commit()
-        await self.session.refresh(instance)
-        return instance
+
+        try:
+            await self.session.commit()
+            await self.session.refresh(instance)
+            return instance
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"Failed to create {self.model_class.__name__}: {str(e)}")
+            raise
 
     async def get(self, id: Any) -> Optional[T]:
         """
@@ -121,7 +131,7 @@ class BaseRepository(Generic[T]):
 
     async def update(self, id: Any, **kwargs) -> Optional[T]:
         """
-        Update a record by ID.
+        Update a record by ID with proper transaction handling.
 
         Args:
             id: Primary key value
@@ -138,13 +148,18 @@ class BaseRepository(Generic[T]):
             if hasattr(instance, key):
                 setattr(instance, key, value)
 
-        await self.session.commit()
-        await self.session.refresh(instance)
-        return instance
+        try:
+            await self.session.commit()
+            await self.session.refresh(instance)
+            return instance
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"Failed to update {self.model_class.__name__}: {str(e)}")
+            raise
 
     async def delete(self, id: Any) -> bool:
         """
-        Delete a record by ID.
+        Delete a record by ID with proper transaction handling.
 
         Args:
             id: Primary key value
@@ -156,9 +171,14 @@ class BaseRepository(Generic[T]):
         if not instance:
             return False
 
-        await self.session.delete(instance)
-        await self.session.commit()
-        return True
+        try:
+            await self.session.delete(instance)
+            await self.session.commit()
+            return True
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"Failed to delete {self.model_class.__name__}: {str(e)}")
+            raise
 
     async def count(self, **filters) -> int:
         """
@@ -193,26 +213,32 @@ class BaseRepository(Generic[T]):
 
     async def bulk_create(self, instances: List[T]) -> List[T]:
         """
-        Create multiple records in one transaction.
+        Create multiple records in one transaction (optimized to avoid N+1).
 
         Args:
             instances: List of model instances
 
         Returns:
             List of created instances
+
+        Note:
+            This method avoids N+1 queries by flushing instead of refreshing
+            each instance individually after insert.
         """
-        self.session.add_all(instances)
-        await self.session.commit()
-
-        # Refresh all instances to get IDs
-        for instance in instances:
-            await self.session.refresh(instance)
-
-        return instances
+        try:
+            self.session.add_all(instances)
+            await self.session.flush()  # Flush to assign IDs without committing
+            await self.session.commit()
+            # Instances now have IDs; no need to refresh individually
+            return instances
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"Failed to bulk create {self.model_class.__name__}: {str(e)}")
+            raise
 
     async def bulk_delete(self, ids: List[Any]) -> int:
         """
-        Delete multiple records by IDs.
+        Delete multiple records by IDs with proper transaction handling.
 
         Args:
             ids: List of primary key values
@@ -224,8 +250,13 @@ class BaseRepository(Generic[T]):
         result = await self.session.execute(query)
         instances = result.scalars().all()
 
-        for instance in instances:
-            await self.session.delete(instance)
+        try:
+            for instance in instances:
+                await self.session.delete(instance)
 
-        await self.session.commit()
-        return len(instances)
+            await self.session.commit()
+            return len(instances)
+        except Exception as e:
+            await self.session.rollback()
+            logger.error(f"Failed to bulk delete {self.model_class.__name__}: {str(e)}")
+            raise
