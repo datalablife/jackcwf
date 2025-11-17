@@ -11,14 +11,23 @@
 ## 2. API 路由
 - `src/api/conversation_routes.py`
   - 提供会话 CRUD、历史查询与发送消息 REST 接口。
+  - **Epic 2 增强** (✨)：自动触发对话总结检查（超过 6000 token）
 - `src/api/message_routes.py`
   - 针对单条消息进行读取、更新工具结果/Token 以及硬删除。
-- `src/api/document_routes.py`
-  - 覆盖文档上传、分页、摘要、软删除、语义搜索与 chunk 拉取。
+- `src/api/document_routes.py` (Epic 2 ✨)
+  - 文档上传、分页、摘要、软删除、**语义搜索与 chunk 拉取**。
+  - 新增端点：
+    - `POST /documents/upload` - 异步文件上传与处理
+    - `POST /documents/search` - RAG 语义相似性搜索
+    - `GET /documents/{id}/chunks` - 获取文档分块
 - `src/api/tools_routes.py`
   - 列出可用 LangChain 工具，提供受保护的工具执行端点。
+  - **Epic 2 新增** (✨)：支持 DuckDuckGo web_search 工具
 - `src/api/websocket_routes.py`
   - 管理实时会话 WebSocket：验证、上下文加载、消息处理、心跳。
+  - **Epic 2 增强** (✨)：
+    - 新增事件类型：`tool_call`, `tool_result`, `complete_state`
+    - 支持并行工具执行与结果流式推送
 
 ## 3. 数据库与 ORM
 - `src/db/config.py`, `src/db/migrations.py`, `src/db/base.py`
@@ -26,18 +35,45 @@
   - 初始化表、启用 pgvector、建立 HNSW 索引及 embeddings 按月分区。
 - `src/models/*.py`
   - 定义 Conversation、Message、Document、Embedding ORM。
+  - **Epic 2 增强** (✨)：
+    - `Document` - 新增 `total_chunks`, `meta` (JSONB) 字段
+    - `Embedding` - 使用 pgvector Vector(1536)，支持 HNSW 索引
 - `src/repositories/*.py`
   - 封装会话/消息/文档/向量的常用查询、计数、软删除、搜索等。
+  - **Epic 2 新增** (✨)：
+    - `EmbeddingRepository.search()` - pgvector 余弦相似性搜索（P99 ≤200ms）
+    - `EmbeddingRepository.batch_insert()` - 批量向量存储
+    - `DocumentRepository` - 文档生命周期管理
 
 ## 4. 服务层
 - `ConversationService`
   - 组合仓储实现会话生命周期、消息写入、上下文聚合。
-- `DocumentService` + `DocumentChunker`
-  - 文档切分、嵌入入库、计数维护及软删除。
-- `EmbeddingService`
-  - 调用 OpenAI embeddings、批量生成、余弦相似度计算。
-- `AgentService`
-  - 使用 LangChain ChatOpenAI 构建带工具的代理，支持工具调用、流式/非流式处理、对话总结。
+- `DocumentService` + `DocumentChunker` (Epic 2 ✨)
+  - Token-based 文档分割（tiktoken，1000 token 块大小，200 token 重叠）
+  - 支持 PDF/TXT/MD 文件加载与处理
+  - 文档生命周期管理：上传、分块、向量化、软删除
+  - 异步并行处理：使用 `asyncio.TaskGroup` 并行分块和向量化
+- `EmbeddingService` (Epic 2 ✨)
+  - OpenAI text-embedding-3-small 集成（1536 维）
+  - 单文本与批量向量化：`embed_text()`, `embed_batch()`
+  - 包含重试机制（3 次）、成本监控、错误处理
+- `EmbeddingRepository` (Epic 2 ✨)
+  - pgvector 存储与检索：`store_embedding()`, `batch_insert()`, `search()`
+  - RAG 相似性搜索：余弦距离（cosine similarity），P99 ≤200ms
+  - Redis 缓存策略：搜索结果缓存
+- `AgentService` (Epic 2 ✨)
+  - 使用 LangChain v1.0 ChatOpenAI (gpt-4-turbo) 构建带工具的代理
+  - 核心方法：`run_agent()` 单次推理，`stream_message()` 流式推理
+  - 工具集成（新增）：
+    - `search_documents_tool()` - RAG 语义搜索（Task 2.2.2）
+    - `query_database_tool()` - 安全 SQL 查询，SELECT-only（Task 2.2.3）
+    - `web_search_tool()` - DuckDuckGo 网络搜索（Task 2.2.4）
+  - 工具结果聚合与流式推送；支持并行工具执行（`asyncio.TaskGroup`）
+- `ConversationSummarizationService` (Epic 2 ✨)
+  - 自动对话总结：6000 token 阈值触发
+  - 保留最近 10 条消息，其余生成摘要
+  - 使用 Claude Sonnet 4.5 生成摘要，防止 token 膨胀
+  - 方法：`check_and_summarize()`, `inject_summary_into_context()`
 - `create_agent.ManagedAgent`
   - 通用代理封装，允许插入 AgentMiddleware 实现成本跟踪、记忆注入等钩子。
 - `services/middleware/*`
@@ -82,21 +118,43 @@
 - `src/api/websocket_routes.py:387-470`
   - 消费 `AgentService.stream_message` 事件流，实时转发 chunk、tool_call/tool_result，拿到 `complete_state` 后落库并发送完成事件，替代原先的字符串切片“模拟 streaming”。
 
-## 9. 文档 & RAG 管线
-- `src/api/document_routes.py` + `DocumentService`
-  - 上传、chunk 切分、嵌入生成、软删除、语义搜索、chunk 拉取。
+## 9. 文档 & RAG 管线 (Epic 2 ✨ 完整实现)
+- `src/api/document_routes.py` + `DocumentService` + `DocumentChunker`
+  - **上传端点** `POST /documents/upload` - 异步文件处理，支持 PDF/TXT/MD
+  - **分块处理** - Token-based 分割（tiktoken，1000 token 块，200 token 重叠）
+  - **嵌入生成** - OpenAI text-embedding-3-small（1536 维）
+  - **软删除** - 文档及其 embeddings 级联删除
+  - **语义搜索** `POST /documents/search` - pgvector 余弦相似性搜索（P99 ≤200ms）
+  - **Chunk 拉取** `GET /documents/{id}/chunks` - 分页获取文档分块
 - `src/services/embedding_service.py` + `EmbeddingRepository`
-  - OpenAI embedding 生成、余弦相似度批量计算、pgvector HNSW 检索。
+  - **OpenAI 向量化** - 单文本与批量处理，包含重试机制（3 次）
+  - **批量存储** - `batch_insert()` 高效存储向量到 pgvector
+  - **相似性搜索** - pgvector `<->` 操作符（余弦距离），Redis 缓存策略
 
-## 10. 智能体与工具
-- `src/services/agent_service.py:35-653`
-  - 提供真实 streaming：重构消息构造、SQL/搜索工具校验；新增 DuckDuckGo 搜索与严格 SQL 审核执行；`_stream_with_tools` 递归消费 LangChain `astream` 输出，逐块推送内容并执行工具，最终产出 `complete_state` 元数据。
+## 10. 智能体与工具 (Epic 2 ✨ 完整实现)
+- `src/services/agent_service.py`
+  - **LangChain v1.0 集成** - 使用 ChatOpenAI(gpt-4-turbo) + create_agent() API
+  - **流式推理** - `stream_message()` 返回 `AsyncIterator[str]`，支持实时响应
+  - **三个工具集成**（Epic 2 新增）：
+    - `search_documents_tool()` - RAG 语义搜索（Task 2.2.2）
+    - `query_database_tool()` - 安全 SQL 查询，SELECT-only（Task 2.2.3）
+    - `web_search_tool()` - DuckDuckGo 网络搜索（Task 2.2.4）
+  - **并行工具执行** - `asyncio.TaskGroup` 同时运行多个工具，P99 ≤200ms
+  - **工具结果聚合** - 合并所有工具输出，注入 Agent 上下文
+  - **消息构造** - 重构对话历史、RAG 上下文、总结注入
+  - **流式 WebSocket 推送** - 逐块推送内容、工具调用、执行结果
+- `src/services/conversation_summarization_service.py` (Epic 2 新增)
+  - **自动总结** - 6000 token 阈值触发
+  - **保留策略** - 保留最近 10 条消息，其余生成摘要
+  - **总结生成** - 使用 Claude Sonnet 4.5，防止 token 膨胀
+  - **上下文注入** - 将总结注入到 Agent 推理上下文
 - `src/services/create_agent.py` + `services/middleware`
   - 可插拔 AgentMiddleware（成本、记忆、审计等），扩展 LangChain 代理行为。
 - `src/api/tools_routes.py`
   - 工具枚举与受控执行（需 Admin Key），便于调试。
+  - **Epic 2 新增** - DuckDuckGo web_search 工具支持
 - `pyproject.toml:67-125`
-  - 加入 `PyJWT` 与 `duckduckgo-search` 依赖，支持安全认证与 Web 搜索。
+  - 加入 `duckduckgo-search` 依赖，支持 Web 搜索。
 
 ## 11. 安全与中间件
 - `src/middleware/auth_middleware.py`
