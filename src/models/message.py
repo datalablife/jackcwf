@@ -61,7 +61,7 @@ class MessageORM(Base):
     tokens_used = Column(Integer, nullable=True)
 
     # Additional Metadata
-    metadata = Column(JSON, nullable=False, default={})
+    meta = Column(JSON, nullable=False, default={})
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow, index=True)

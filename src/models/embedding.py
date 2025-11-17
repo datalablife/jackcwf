@@ -5,7 +5,17 @@ from typing import List, Optional
 from uuid import uuid4
 
 from sqlalchemy import Column, String, Text, Integer, Boolean, DateTime, JSON, Index, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, VECTOR
+from sqlalchemy.dialects.postgresql import UUID
+
+# Try to import Vector from pgvector, fallback to List/ARRAY
+try:
+    from pgvector.sqlalchemy import Vector
+    VECTOR_TYPE = Vector(1536)
+except ImportError:
+    # Fallback for development without pgvector installed
+    # In production, pgvector will be installed
+    from sqlalchemy import ARRAY, Float
+    VECTOR_TYPE = ARRAY(Float, dimensions=1)
 
 from src.db.base import Base
 
@@ -50,11 +60,11 @@ class EmbeddingORM(Base):
     # Chunk Content & Embedding
     chunk_text = Column(Text, nullable=False)
     # Vector embedding (1536-dimensional for OpenAI text-embedding-3-small)
-    embedding = Column(VECTOR(1536), nullable=False)
+    embedding = Column(VECTOR_TYPE, nullable=False)
     chunk_index = Column(Integer, nullable=False)  # Sequential index within document
 
     # Metadata
-    metadata = Column(JSON, nullable=False, default={})
+    meta = Column(JSON, nullable=False, default={})
 
     # Soft Delete
     is_deleted = Column(Boolean, nullable=False, default=False, index=True)

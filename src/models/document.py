@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import uuid4
 
-from sqlalchemy import Column, String, Text, Boolean, DateTime, JSON, Index
+from sqlalchemy import Column, String, Text, Boolean, DateTime, JSON, Index, Integer
 from sqlalchemy.dialects.postgresql import UUID
 
 from src.db.base import Base
@@ -36,10 +36,10 @@ class DocumentORM(Base):
     content = Column(Text, nullable=False)
 
     # Chunking Info
-    total_chunks = Column(int, nullable=False, default=0)
+    total_chunks = Column(Integer, nullable=False, default=0)
 
     # Additional Metadata
-    metadata = Column(JSON, nullable=False, default={})
+    meta = Column(JSON, nullable=False, default={})
 
     # Soft Delete
     is_deleted = Column(Boolean, nullable=False, default=False, index=True)

@@ -1,9 +1,10 @@
 """Document service for document management and chunking."""
 
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple, Dict, Any
 from uuid import UUID
 
+import tiktoken
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models import DocumentORM, EmbeddingORM
@@ -16,46 +17,112 @@ class DocumentChunker:
     """
     Service for chunking documents into processable pieces.
 
-    Splits documents into overlapping chunks suitable for embedding.
+    Splits documents into overlapping chunks using token-based approach.
+    Suitable for embedding with proper semantic boundaries.
+
+    Tokenizer: tiktoken (GPT-3.5-turbo encoding)
+    Chunk size: 1000 tokens (default)
+    Overlap: 200 tokens (default)
     """
 
-    DEFAULT_CHUNK_SIZE = 1000  # characters
-    DEFAULT_CHUNK_OVERLAP = 200  # characters
+    DEFAULT_CHUNK_SIZE = 1000  # tokens
+    DEFAULT_CHUNK_OVERLAP = 200  # tokens
 
     def __init__(self, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_CHUNK_OVERLAP):
         """
         Initialize document chunker.
 
         Args:
-            chunk_size: Number of characters per chunk
-            overlap: Number of overlapping characters between chunks
+            chunk_size: Number of tokens per chunk (default 1000)
+            overlap: Number of overlapping tokens between chunks (default 200)
         """
         self.chunk_size = chunk_size
         self.overlap = overlap
+        # Use GPT-3.5-turbo encoding for consistency
+        self.tokenizer = tiktoken.get_encoding("cl100k_base")
 
     def chunk_text(self, text: str) -> List[str]:
         """
-        Split text into chunks with overlap.
+        Split text into chunks with overlap using token-based approach.
 
         Args:
             text: Text to chunk
 
         Returns:
             List of text chunks
+
+        Raises:
+            ValueError: If text is empty or tokenization fails
         """
-        chunks = []
-        step = self.chunk_size - self.overlap
+        if not text or not text.strip():
+            raise ValueError("Text cannot be empty for chunking")
 
-        for i in range(0, len(text), step):
-            chunk = text[i : i + self.chunk_size]
-            if chunk.strip():  # Skip empty chunks
-                chunks.append(chunk)
+        try:
+            # Tokenize the text
+            tokens = self.tokenizer.encode(text)
+            logger.info(f"Tokenized text into {len(tokens)} tokens")
 
-            # If this is the last chunk and it's smaller than chunk_size, break
-            if i + self.chunk_size >= len(text):
-                break
+            if len(tokens) == 0:
+                raise ValueError("Text produced no tokens after tokenization")
 
-        return chunks
+            chunks: List[str] = []
+            step = self.chunk_size - self.overlap
+
+            # Create chunks with overlap
+            for i in range(0, len(tokens), step):
+                chunk_tokens = tokens[i : i + self.chunk_size]
+
+                # Decode tokens back to text
+                chunk_text = self.tokenizer.decode(chunk_tokens)
+
+                if chunk_text.strip():  # Skip empty chunks
+                    chunks.append(chunk_text)
+
+                # If this is the last chunk and it's smaller than chunk_size, break
+                if i + self.chunk_size >= len(tokens):
+                    break
+
+            logger.info(f"Created {len(chunks)} chunks from text")
+            return chunks
+
+        except Exception as e:
+            logger.error(f"Error chunking text: {str(e)}")
+            raise
+
+    def chunk_text_with_metadata(
+        self,
+        text: str,
+        document_metadata: Optional[Dict[str, Any]] = None,
+    ) -> List[Tuple[str, Dict[str, Any]]]:
+        """
+        Split text into chunks and include metadata for each chunk.
+
+        Args:
+            text: Text to chunk
+            document_metadata: Metadata to include (e.g., page, section)
+
+        Returns:
+            List of (chunk_text, chunk_metadata) tuples
+
+        Raises:
+            ValueError: If text is empty
+        """
+        if document_metadata is None:
+            document_metadata = {}
+
+        chunks = self.chunk_text(text)
+        chunks_with_metadata: List[Tuple[str, Dict[str, Any]]] = []
+
+        for i, chunk in enumerate(chunks):
+            chunk_metadata = {
+                **document_metadata,
+                "chunk_index": i,
+                "chunk_count": len(chunks),
+                "tokens": len(self.tokenizer.encode(chunk)),
+            }
+            chunks_with_metadata.append((chunk, chunk_metadata))
+
+        return chunks_with_metadata
 
     def chunk_by_sentences(self, text: str) -> List[str]:
         """
@@ -242,5 +309,5 @@ class DocumentService:
             "total_chunks": document.total_chunks,
             "embedding_count": embedding_count,
             "created_at": document.created_at.isoformat(),
-            "metadata": document.metadata,
+            "meta": document.meta,
         }

@@ -19,15 +19,11 @@ DATABASE_URL = os.getenv(
 )
 
 # Create async engine with optimized settings
+# Use NullPool for async engines (QueuePool is not compatible with asyncio)
 engine: AsyncEngine = create_async_engine(
     DATABASE_URL,
     echo=os.getenv("SQL_ECHO", "false").lower() == "true",
-    pool_size=20,
-    max_overflow=10,
-    pool_pre_ping=True,
-    pool_recycle=3600,  # Recycle connections every hour
-    # Use NullPool for serverless/edge environments, QueuePool for traditional servers
-    poolclass=QueuePool,
+    poolclass=NullPool,  # Use NullPool for async engines
     future=True,
     # Connection timeout
     connect_args={

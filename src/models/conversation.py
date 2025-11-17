@@ -38,7 +38,7 @@ class ConversationORM(Base):
     system_prompt = Column(Text, nullable=False)
 
     # Additional Data
-    metadata = Column(JSON, nullable=False, default={})
+    meta = Column(JSON, nullable=False, default={})
 
     # Soft Delete
     is_deleted = Column(Boolean, nullable=False, default=False, index=True)
@@ -60,7 +60,7 @@ class ConversationORM(Base):
             "summary": self.summary,
             "model": self.model,
             "system_prompt": self.system_prompt,
-            "metadata": self.metadata,
+            "meta": self.meta,
             "is_deleted": self.is_deleted,
             "deleted_at": self.deleted_at.isoformat() if self.deleted_at else None,
             "created_at": self.created_at.isoformat(),
