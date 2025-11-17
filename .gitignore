@@ -18,6 +18,18 @@ __pycache__/
 .postgres_config
 assets/
 
+# Environment variables and secrets (NEVER commit actual credentials)
+.env
+.env.local
+.env.*.local
+.env.prod
+.env.staging
+.env.development
+.secrets/
+*.key
+*.pem
+secrets.json
+
 # 代码审查工具（可选，根据需要调整）
 code_review_crew/output/
 
@@ -39,3 +51,44 @@ htmlcov/
 *.temp
 .DS_Store
 Thumbs.db
+
+# ============================================================
+# 🔒 敏感信息 - 永远不要提交到版本控制
+# ============================================================
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 配置文件
+/scripts/config/*.env
+/scripts/config/dev.*
+/scripts/config/test.*
+/scripts/config/prod.*
+
+# 凭证文件
+/scripts/ci/setup-secrets.sh
+/config/secrets.yml
+/config/credentials.json
+*.pem
+*.key
+*.jks
+*.p12
+
+# IDE 敏感文件
+.vscode/settings.json
+.idea/runConfigurations/
+.idea/deployment.xml
+
+# Docker 敏感信息
+docker-compose.override.yml
+
+# 第三方配置
+/frontend/.env*
+/backend/.env*
+/code_review_crew/.env*
+
