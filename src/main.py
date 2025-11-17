@@ -1,18 +1,21 @@
 """FastAPI main application for LangChain AI Conversation."""
 
+import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 
 from src.db.config import engine
 from src.db.migrations import init_db
+from src.exceptions import APIException
+from src.infrastructure.shutdown import get_shutdown_manager
 
-# Configure logging
+# Configure structured logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -25,23 +28,35 @@ async def lifespan(app: FastAPI):
     """
     Lifespan context manager for FastAPI app.
 
-    Handles startup and shutdown events.
+    Handles startup and shutdown events with graceful shutdown support.
     """
     # Startup
     logger.info("Starting LangChain AI Conversation backend...")
     try:
         await init_db(engine)
         logger.info("Database initialization completed")
+
+        # Setup graceful shutdown
+        shutdown_manager = get_shutdown_manager()
+        await shutdown_manager.setup_signal_handlers()
+        logger.info("Graceful shutdown handlers registered")
+
     except Exception as e:
-        logger.error(f"Failed to initialize database: {e}")
+        logger.error(f"Failed to initialize application: {e}")
         raise
 
     yield
 
     # Shutdown
     logger.info("Shutting down LangChain AI Conversation backend...")
-    await engine.dispose()
-    logger.info("Shutdown completed")
+    shutdown_manager = get_shutdown_manager()
+    try:
+        await shutdown_manager.shutdown()
+        await shutdown_manager.cleanup_resources()
+    except Exception as e:
+        logger.error(f"Error during shutdown: {e}")
+    finally:
+        logger.info("Shutdown completed")
 
 
 # Create FastAPI application
@@ -66,33 +81,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add custom middleware (in correct order for execution)
-# Due to middleware stacking, last added runs first in request processing
-# Correct execution order: Auth → ContentModeration → MemoryInjection → ResponseStructuring → AuditLogging
+# Add custom middleware stack (in REVERSE order - last added executes first in request processing)
+# Execution order: Authentication → ContentModeration → MemoryInjection → ResponseStructuring → AuditLogging
+logger.info("Registering middleware stack...")
 from src.middleware.audit_logging_middleware import AuditLoggingMiddleware
 from src.middleware.response_structuring_middleware import ResponseStructuringMiddleware
 from src.middleware.content_moderation_middleware import ContentModerationMiddleware
 from src.middleware.memory_injection_middleware import MemoryInjectionMiddleware
 from src.middleware.auth_middleware import AuthenticationMiddleware
 
-# Add in REVERSE order (last added = first executed)
-app.add_middleware(AuditLoggingMiddleware)  # Executes last (logs everything)
-app.add_middleware(ResponseStructuringMiddleware)  # Executes 4th (structures response)
-app.add_middleware(MemoryInjectionMiddleware)  # Executes 3rd (injects memory/context)
-app.add_middleware(ContentModerationMiddleware)  # Executes 2nd (rate limiting, content check)
-app.add_middleware(AuthenticationMiddleware)  # Executes first (auth check)
+# Add in REVERSE order (last added = first executed in request processing)
+app.add_middleware(AuditLoggingMiddleware)  # Last in execution (logs everything)
+app.add_middleware(ResponseStructuringMiddleware)  # 4th in execution (structures response)
+app.add_middleware(MemoryInjectionMiddleware)  # 3rd in execution (injects memory/context)
+app.add_middleware(ContentModerationMiddleware)  # 2nd in execution (rate limiting, content check)
+app.add_middleware(AuthenticationMiddleware)  # First in execution (auth check)
+logger.info("Middleware stack registered successfully")
 
 
 # Global exception handlers
+@app.exception_handler(APIException)
+async def api_exception_handler(request: Request, exc: APIException):
+    """Handle API exceptions with structured response."""
+    logger.error(
+        f"API Exception: {exc.error_code} - {exc.message}",
+        extra={"error_details": exc.details, "request_id": getattr(request.state, "request_id", "unknown")}
+    )
+    content = exc.to_dict()
+    content["timestamp"] = __import__("datetime").datetime.utcnow().isoformat()
+    if hasattr(request.state, "request_id"):
+        content["request_id"] = request.state.request_id
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=content,
+    )
+
+
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle validation errors."""
     logger.error(f"Validation error on {request.url}: {exc.errors()}")
     return JSONResponse(
-        status_code=422,
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={
-            "detail": "Validation error",
-            "errors": exc.errors(),
+            "success": False,
+            "error": "Validation error",
+            "error_code": "VALIDATION_ERROR",
+            "details": exc.errors(),
+            "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
         },
     )
 
@@ -101,24 +139,19 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions."""
     logger.error(f"Unhandled exception on {request.url}: {str(exc)}", exc_info=True)
+    is_debug = os.getenv("DEBUG", "false").lower() == "true"
+
     return JSONResponse(
-        status_code=500,
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
-            "detail": "Internal server error",
-            "error": str(exc) if os.getenv("DEBUG", "false").lower() == "true" else "An error occurred",
+            "success": False,
+            "error": "Internal server error",
+            "error_code": "INTERNAL_ERROR",
+            "details": str(exc) if is_debug else None,
+            "timestamp": __import__("datetime").datetime.utcnow().isoformat(),
+            "request_id": getattr(request.state, "request_id", "unknown"),
         },
     )
-
-
-# Health check endpoint
-@app.get("/health", tags=["Health"])
-async def health_check():
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "service": "LangChain AI Conversation API",
-        "version": "1.0.0",
-    }
 
 
 # Root endpoint
@@ -131,13 +164,21 @@ async def root():
         "docs": "/api/docs",
         "health": "/health",
         "endpoints": {
-            "conversations": "/api/conversations",
-            "documents": "/api/documents",
-            "messages": "/api/conversations/{id}/messages",
-            "tools": "/api/tools",
-            "websocket": "/ws/conversations/{id}",
+            "conversations": "/api/v1/conversations",
+            "documents": "/api/v1/documents",
+            "messages": "/api/v1/conversations/{id}/messages",
+            "tools": "/api/v1/tools",
+            "websocket": "/api/v1/ws/{conversation_id}",
         },
     }
+
+
+# Register health check routes
+logger.info("Registering health check endpoints...")
+from src.infrastructure.health import create_health_routes
+health_router = create_health_routes()
+app.include_router(health_router, tags=["Health"])
+logger.info("Health check endpoints registered")
 
 
 # Register API routes
@@ -181,3 +222,4 @@ if __name__ == "__main__":
         reload=os.getenv("ENV", "development") == "development",
         log_level=os.getenv("LOG_LEVEL", "info").lower(),
     )
+
