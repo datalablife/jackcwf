@@ -209,7 +209,39 @@ from src.api.websocket_routes import router as websocket_router
 app.include_router(websocket_router)
 logger.info("Registered WebSocket routes")
 
+# Streaming routes (Story 3.3)
+from src.api.streaming_routes import router as streaming_router
+app.include_router(streaming_router)
+logger.info("Registered streaming routes")
+
 logger.info("All routes registered successfully")
+
+# Initialize monitoring (Story 3.3)
+logger.info("Initializing monitoring...")
+from src.infrastructure.monitoring import get_monitoring_manager
+
+async def initialize_monitoring():
+    """Initialize monitoring on startup."""
+    monitoring_manager = get_monitoring_manager()
+    if os.getenv("ENABLE_MONITORING", "true").lower() == "true":
+        interval = int(os.getenv("MONITORING_INTERVAL_SECONDS", "10"))
+        await monitoring_manager.start_monitoring(interval)
+        logger.info(f"Monitoring started with {interval}s interval")
+    else:
+        logger.info("Monitoring disabled")
+
+# Update lifespan to include monitoring
+original_lifespan = lifespan
+
+@asynccontextmanager
+async def updated_lifespan(app: FastAPI):
+    """Updated lifespan with monitoring."""
+    async with original_lifespan(app):
+        await initialize_monitoring()
+        yield
+    # Shutdown monitoring
+    monitoring_manager = get_monitoring_manager()
+    await monitoring_manager.stop_monitoring()
 
 
 if __name__ == "__main__":
