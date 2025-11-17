@@ -69,9 +69,11 @@ get_target_location() {
 Hook执行 (pre-commit)
 ├─ process_root_directory()
 │  ├─ 扫描根目录*.md文件
+│  ├─ 检查项目关键状态标记 (SUCCESS→COMPLETE→READY等)
+│  │  └─ 特例：如果同时有REPORT，则REPORT优先
 │  ├─ 检查优先级2关键词 (REPORT→SUMMARY→GUIDE...)
-│  ├─ 不匹配则检查优先级1关键词 (COMPLETE→SUCCESS...)
-│  └─ 移动到对应目录 (或保留在根)
+│  ├─ 移动到对应目录 (或保留在根)
+│  └─ 生成执行报告
 │
 └─ process_docs_directory()
    ├─ 扫描docs/*/*.md文件
@@ -148,5 +150,22 @@ cat /tmp/claude_output_rules.log
 
 ---
 
+## 版本历史
+
+### v2.1 (2025-11-17) - 状态标记优化
+- ✨ 改进SUCCESS/COMPLETE优先级判断
+- 🎯 项目关键状态标记现在优先保留在根目录
+- 🔧 特殊规则：COMPLETION_REPORT→docs/reference/ (REPORT优先)
+- ✅ EPIC_1_SUCCESS_SUMMARY保留在根目录作为完成标记
+
+### v2.0 (2025-11-17) - 增强版发布
+- ✅ 双向文件整理支持
+- ✅ 智能优先级判断
+- ✅ 根目录扫描功能
+- ✅ 改进的日志输出
+
+---
+
 **维护者**: LangChain 1.0 后端架构
-**最后更新**: 2025-11-17
+**最后更新**: 2025-11-17 (v2.1)
+**Status**: ✅ 已验证和优化
