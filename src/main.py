@@ -5,6 +5,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
+import asyncpg
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -14,6 +15,7 @@ from src.db.config import engine
 from src.db.migrations import init_db
 from src.exceptions import APIException
 from src.infrastructure.shutdown import get_shutdown_manager
+from src.services.semantic_cache import SemanticCacheService, set_cache_service
 
 # Configure structured logging
 logging.basicConfig(
@@ -29,12 +31,54 @@ async def lifespan(app: FastAPI):
     Lifespan context manager for FastAPI app.
 
     Handles startup and shutdown events with graceful shutdown support.
+    Includes initialization of semantic cache service for RAG optimization.
     """
     # Startup
     logger.info("Starting LangChain AI Conversation backend...")
     try:
         await init_db(engine)
         logger.info("Database initialization completed")
+
+        # Initialize asyncpg connection pool for semantic cache
+        logger.info("Initializing asyncpg connection pool for semantic cache...")
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            logger.warning("DATABASE_URL not set, skipping semantic cache initialization")
+        else:
+            try:
+                # Convert SQLAlchemy URL format to asyncpg format
+                # From: postgresql+asyncpg://user:pass@host:port/db
+                # To:   postgresql://user:pass@host:port/db
+                asyncpg_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+
+                app.state.db_pool = await asyncpg.create_pool(
+                    asyncpg_url,
+                    min_size=5,
+                    max_size=20,
+                    command_timeout=60,
+                    max_inactive_connection_lifetime=300
+                )
+                logger.info("asyncpg connection pool created successfully")
+
+                # Initialize semantic cache service
+                logger.info("Initializing semantic cache service...")
+                cache_service = SemanticCacheService(app.state.db_pool)
+                init_success = await cache_service.initialize()
+
+                if init_success:
+                    set_cache_service(cache_service)
+                    logger.info("✅ Semantic cache initialized successfully")
+
+                    # Initialize cache stats updater for Prometheus metrics
+                    logger.info("Initializing cache stats updater...")
+                    from src.infrastructure.cache_stats_updater import start_cache_stats_updater
+                    await start_cache_stats_updater(interval_seconds=30)
+                    logger.info("✅ Cache stats updater started (30s interval)")
+                else:
+                    logger.warning("⚠️ Semantic cache initialization failed - running without cache")
+            except Exception as e:
+                logger.error(f"Failed to initialize semantic cache: {e}", exc_info=True)
+                logger.warning("⚠️ Semantic cache initialization failed - running without cache")
 
         # Setup graceful shutdown
         shutdown_manager = get_shutdown_manager()
@@ -49,6 +93,23 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("Shutting down LangChain AI Conversation backend...")
+
+    # Stop cache stats updater
+    try:
+        from src.infrastructure.cache_stats_updater import stop_cache_stats_updater
+        await stop_cache_stats_updater()
+        logger.info("Cache stats updater stopped")
+    except Exception as e:
+        logger.error(f"Error stopping cache stats updater: {e}")
+
+    # Close asyncpg pool if it exists
+    if hasattr(app.state, "db_pool") and app.state.db_pool:
+        try:
+            await app.state.db_pool.close()
+            logger.info("asyncpg connection pool closed")
+        except Exception as e:
+            logger.error(f"Error closing asyncpg pool: {e}")
+
     shutdown_manager = get_shutdown_manager()
     try:
         await shutdown_manager.shutdown()
@@ -213,6 +274,23 @@ logger.info("Registered WebSocket routes")
 from src.api.streaming_routes import router as streaming_router
 app.include_router(streaming_router)
 logger.info("Registered streaming routes")
+
+# Cache admin routes (Phase 1 AI Optimization)
+from src.api.cache_admin_routes import router as cache_admin_router
+app.include_router(cache_admin_router)
+logger.info("Registered cache admin routes")
+
+# Prometheus metrics endpoint
+logger.info("Registering Prometheus metrics endpoint...")
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from src.infrastructure.cache_metrics import cache_registry
+
+@app.get("/metrics", tags=["Metrics"])
+async def metrics():
+    """Prometheus metrics endpoint for monitoring."""
+    return generate_latest(cache_registry)
+
+logger.info("Registered Prometheus metrics endpoint at /metrics")
 
 logger.info("All routes registered successfully")
 
