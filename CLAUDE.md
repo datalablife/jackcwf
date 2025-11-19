@@ -477,3 +477,7 @@ poetry lock
 5. **版本兼容性**：`pyproject.toml` 中的 `requires-python = ">=3.12"` 必须遵守
 
 ---
+
+### 项目启动 FastAPI 应用
+
+ source .venv/bin/activate && python -m uvicorn src.main:app --host 0.0.0.0 --port 8000

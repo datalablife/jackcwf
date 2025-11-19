@@ -11,8 +11,12 @@ from dataclasses import dataclass, asdict
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from collections import defaultdict
-import psutil
 import os
+
+try:
+    import psutil
+except ImportError:  # pragma: no cover - fallback for optional dependency
+    psutil = None
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +61,22 @@ class MetricsCollector:
 
     async def collect_system_metrics(self) -> SystemMetrics:
         """Collect current system metrics."""
+        if psutil is None:
+            logger.warning(
+                "psutil not installed; returning placeholder metrics. "
+                "Install psutil for full monitoring support."
+            )
+            metrics = SystemMetrics(
+                cpu_percent=0.0,
+                memory_percent=0.0,
+                memory_mb=0.0,
+                open_files=0,
+                timestamp=datetime.now().isoformat(),
+            )
+            self.metrics_history.append(metrics)
+            await self._cleanup_old_metrics()
+            return metrics
+
         process = psutil.Process(os.getpid())
 
         cpu_percent = process.cpu_percent(interval=0.1)

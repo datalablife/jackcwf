@@ -5,11 +5,15 @@ import logging
 import os
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
 import asyncpg
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+
+# Load environment variables from .env file
+load_dotenv()
 
 from src.db.config import engine
 from src.db.migrations import init_db

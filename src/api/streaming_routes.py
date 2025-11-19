@@ -15,12 +15,11 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.db.config import get_async_session
-from src.repositories.conversation_repository import ConversationRepository
-from src.repositories.message_repository import MessageRepository
+from src.repositories.message import MessageRepository
 from src.services.conversation_service import ConversationService
 from src.services.agent_service import AgentService
 from src.middleware.auth_middleware import verify_jwt_token
-from src.schemas.message_schema import MessageCreateRequest
+from src.schemas.message_schema import MessageCreate
 
 logger = logging.getLogger(__name__)
 
@@ -304,7 +303,7 @@ async def stream_agent_response(
 @router.post("/conversations/{conversation_id}/stream")
 async def stream_conversation_message(
     conversation_id: UUID,
-    request: MessageCreateRequest,
+    request: MessageCreate,
     authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_async_session),
 ) -> StreamingResponse:
@@ -324,7 +323,7 @@ async def stream_conversation_message(
 
     Args:
         conversation_id: ID of the conversation
-        request: MessageCreateRequest with message content
+        request: MessageCreate with message content
         authorization: JWT authorization token
         db: Database session
 
@@ -384,7 +383,7 @@ async def stream_conversation_message(
 @router.post("/conversations/{conversation_id}/stream-debug")
 async def stream_conversation_message_debug(
     conversation_id: UUID,
-    request: MessageCreateRequest,
+    request: MessageCreate,
     authorization: Optional[str] = Header(None),
     db: AsyncSession = Depends(get_async_session),
 ) -> StreamingResponse:
@@ -396,7 +395,7 @@ async def stream_conversation_message_debug(
 
     Args:
         conversation_id: ID of the conversation
-        request: MessageCreateRequest with message content
+        request: MessageCreate with message content
         authorization: JWT authorization token
         db: Database session
 

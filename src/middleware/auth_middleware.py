@@ -216,8 +216,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         if expired_tokens:
             logger.debug(f"Cleaned up {len(expired_tokens)} expired tokens from cache")
 
-    @staticmethod
-    def _is_public_endpoint(path: str) -> bool:
+    def _is_public_endpoint(self, path: str) -> bool:
         """Check if endpoint is public (no auth required)."""
         public_paths = {
             "/health",
@@ -226,6 +225,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/api/openapi.json",
             "/api/redoc",
             "/api/v1/docs",
+            "/metrics",  # Prometheus metrics endpoint
         }
 
         if path in public_paths:
@@ -236,3 +236,25 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             return True
 
         return False
+
+
+_auth_helper_instance: Optional[AuthenticationMiddleware] = None
+
+
+async def _noop_app(scope, receive, send):
+    """Minimal ASGI callable used solely for token verification helper."""
+    return None
+
+
+def _get_auth_helper() -> AuthenticationMiddleware:
+    """Lazily construct AuthenticationMiddleware for token verification reuse."""
+    global _auth_helper_instance
+    if _auth_helper_instance is None:
+        _auth_helper_instance = AuthenticationMiddleware(_noop_app)
+    return _auth_helper_instance
+
+
+def verify_jwt_token(token: str) -> Optional[str]:
+    """Expose JWT verification for dependencies that can't run the middleware."""
+    helper = _get_auth_helper()
+    return helper.verify_token(token)
