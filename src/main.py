@@ -284,6 +284,16 @@ from src.api.cache_admin_routes import router as cache_admin_router
 app.include_router(cache_admin_router)
 logger.info("Registered cache admin routes")
 
+# Claude Prompt Cache routes (Phase 3 AI Optimization)
+from src.api.claude_cache_routes import router as claude_cache_router
+app.include_router(claude_cache_router)
+logger.info("Registered Claude Prompt Cache routes")
+
+# Initialize Claude integration with caching
+from src.services.claude_integration import initialize_claude_integration
+initialize_claude_integration()
+logger.info("Initialized Claude integration with Prompt Caching support")
+
 # Prometheus metrics endpoint
 logger.info("Registering Prometheus metrics endpoint...")
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST

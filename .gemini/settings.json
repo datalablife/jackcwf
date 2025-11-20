@@ -4,5 +4,18 @@
   },
   "general": {
     "previewFeatures": true
+  },
+   "mcpServers": {
+    "context7": {
+      "httpUrl": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "ctx7sk-410845c1-1715-4229-8a78-4eb8d2d54699",
+        "Accept": "application/json, text/event-stream"
+      }
+    },
+     "@21st-dev/magic": {
+      "command": "npx",
+      "args": ["-y", "@21st-dev/magic@latest", "API_KEY=\"d55c45b32e34b74bc9357ada99ee9d6e3e19c2bb870063175b7218c51b9f0aaa\""]
+    }
   }
 }
