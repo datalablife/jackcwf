@@ -1,5 +1,8 @@
 {
   "ui": {
     "hideBanner": false
+  },
+  "general": {
+    "previewFeatures": true
   }
 }
