@@ -52,6 +52,22 @@
   - **Epic 2 增强** (✨)：
     - 新增事件类型：`tool_call`, `tool_result`, `complete_state`
     - 支持并行工具执行与结果流式推送
+- `src/api/streaming_routes.py` (Phase 2 新增 ✨)
+  - **模块用途**：提供 Server-Sent Events (SSE) 流式实时响应
+  - **核心端点**：
+    - `POST /api/v1/conversations/{conversation_id}/stream` (src/api/streaming_routes.py:303-382) - 主流式端点
+      - 异步流式生成对话响应
+      - Server-Sent Events 格式（text/event-stream）
+      - JWT 认证与授权检查
+      - 性能目标：首字节延迟 <100ms，吞吐量 >50 chunks/sec
+    - `POST /api/v1/conversations/{conversation_id}/stream-debug` (src/api/streaming_routes.py:383-412) - 调试端点
+      - 演示工具调用的流式传输
+    - `GET /api/v1/health/stream` (src/api/streaming_routes.py:413-431) - 流式健康检查
+  - **数据模型**：使用 `StreamingModels`（见下文）
+  - **集成依赖**：
+    - `StreamingChatService` - 流式聊天服务（见服务层）
+    - JWT 认证中间件
+    - Prometheus 监控指标
 
 ## 3. 数据库与 ORM
 - `src/db/config.py`, `src/db/migrations.py`, `src/db/base.py`
@@ -62,6 +78,57 @@
   - **Epic 2 增强** (✨)：
     - `Document` - 新增 `total_chunks`, `meta` (JSONB) 字段
     - `Embedding` - 使用 pgvector Vector(1536)，支持 HNSW 索引
+- `src/models/streaming_models.py` (Phase 2 新增 ✨)
+  - **模块用途**：定义流式响应的数据模型与事件类型
+  - **核心枚举与类**：
+    - `StreamEventType` (src/models/streaming_models.py:13-21) - 事件类型枚举（7 种）
+      - `MESSAGE_CHUNK` - 文本消息块
+      - `TOOL_CALL` - 工具调用事件
+      - `TOOL_RESULT` - 工具执行结果
+      - `THINKING` - 思考过程
+      - `COMPLETE_STATE` - 响应完成状态
+      - `ERROR` - 错误事件
+    - `StreamEvent` (src/models/streaming_models.py:24-28) - 基础事件模型
+      - 包含 `type`, `timestamp`, `sequence` 字段
+    - `MessageChunkEvent` (src/models/streaming_models.py:30-47) - 消息块事件
+      - `content` - 文本块内容 (50-100 tokens)
+      - `token_count` - Token 数量
+      - `is_final` - 是否最后一块
+    - `ToolCallEvent` (src/models/streaming_models.py:50-63) - 工具调用事件
+      - `tool_name` - 工具名称
+      - `tool_input` - 工具输入参数
+    - `ToolResultEvent` (src/models/streaming_models.py:66-79) - 工具结果事件
+      - `tool_name` - 执行的工具
+      - `result` - 执行结果
+      - `is_error` - 是否错误
+    - `ThinkingEvent` (src/models/streaming_models.py:82-97) - 思考事件
+      - `thought` - 思考内容
+      - `reasoning` - 推理过程
+    - `CompleteStateEvent` (src/models/streaming_models.py:100-120) - 完成事件
+      - `final_message` - 最终消息
+      - `total_tokens` - 总 Token 数
+      - `total_chunks` - 总块数
+      - `elapsed_time` - 总耗时
+      - `tool_calls_count` - 工具调用次数
+      - `cache_hit` - 是否命中缓存
+    - `ErrorEvent` (src/models/streaming_models.py:123-135) - 错误事件
+      - `error_code` - 错误代码
+      - `error_message` - 错误详细信息
+      - `recoverable` - 是否可恢复
+  - **请求与配置模型**：
+    - `StreamChatRequest` (src/models/streaming_models.py:145-155) - 流式聊天请求
+      - `message` - 用户消息
+      - `include_thinking` - 是否包含思考过程
+      - `context_window` - 消息历史窗口
+    - `StreamingConfig` (src/models/streaming_models.py:158-171) - 流式配置
+      - `chunk_size` - 块大小 (tokens)
+      - `buffer_timeout` - 缓冲区超时
+      - `max_connections` - 最大并发连接数
+      - `first_byte_target_ms` - 首字节延迟目标
+  - **特点**：
+    - 100% Pydantic 兼容，完整类型注解
+    - 包含 JSON Schema 示例
+    - 支持 Server-Sent Events 序列化
 - `src/repositories/*.py`
   - 封装会话/消息/文档/向量的常用查询、计数、软删除、搜索等。
   - **Epic 2 新增** (✨)：
@@ -122,6 +189,42 @@
   - 保留最近 10 条消息，其余生成摘要
   - 使用 Claude Sonnet 4.5 生成摘要，防止 token 膨胀
   - 方法：`check_and_summarize()`, `inject_summary_into_context()`
+- `StreamingChatService` (Phase 2 新增 ✨)
+  - **模块用途**：提供异步流式聊天响应生成，支持工具调用
+  - **核心类与方法**：
+    - `StreamingChatService` (src/services/streaming_chat_service.py:30-340) - 主服务类
+      - `async stream_conversation_response()` (src/services/streaming_chat_service.py:50-155) - 核心流式方法
+        - 异步生成对话响应流
+        - 使用 AsyncGenerator 返回 StreamEvent 对象
+        - 首字节延迟优化：快速初始化流式响应
+        - 缓冲区管理：50-token 块大小
+        - 错误处理与日志记录
+        - 性能目标：
+          - 首字节延迟 <100ms
+          - 块吞吐量 >50 chunks/sec
+          - 内存使用 <20MB per connection
+      - `async stream_with_tool_calls()` (src/services/streaming_chat_service.py:157-230) - 带工具调用的流式响应
+        - 演示工具调用的流式传输
+        - 包含 ThinkingEvent → ToolCallEvent → ToolResultEvent → MessageChunkEvent 流
+        - 完整的工具执行与结果处理
+      - `async _load_conversation_messages()` (src/services/streaming_chat_service.py:232-249) - 加载对话历史
+        - 可选的消息历史窗口限制
+        - 缓存友好的实现
+      - `get_active_connections_count()` (src/services/streaming_chat_service.py:251-252) - 获取活跃连接数
+      - `get_uptime_seconds()` (src/services/streaming_chat_service.py:254-255) - 获取服务运行时间
+      - `async cleanup_stale_connections()` (src/services/streaming_chat_service.py:257-275) - 清理超时连接
+        - 自动检测与清理僵尸连接
+        - 防止内存泄漏
+  - **连接管理**：
+    - `active_connections` 字典 - 追踪活跃流连接
+    - 连接生命周期管理：创建 → 监控 → 清理
+  - **特点**：
+    - 异步优先设计，完全非阻塞
+    - 完整的错误处理与恢复机制
+    - 详细的日志记录与监控
+    - 支持多并发连接（20+ 用户）
+    - 与 Phase 1 语义缓存无缝集成
+    - 与 Phase 3 Claude Prompt 缓存就绪
 - `create_agent.ManagedAgent`
   - 通用代理封装，允许插入 AgentMiddleware 实现成本跟踪、记忆注入等钩子。
 - `services/middleware/*`
