@@ -9,6 +9,7 @@ on:
       - 'src/**'
       - 'frontend/src/**'
       - 'Dockerfile'
+      - '.dockerignore'  # Critical: Ensure Docker build configuration changes trigger rebuild
       - 'docker/**'
       - 'scripts/**'
       - 'pyproject.toml'
