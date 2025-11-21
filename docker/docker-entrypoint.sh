@@ -161,6 +161,19 @@ log "Starting Supervisor..."
 log "=========================================="
 
 # ============================================
+# Pre-startup Nginx Config Check
+# ============================================
+
+log "Validating Nginx configuration..."
+if ! nginx -t 2>&1 | tee /tmp/nginx_test.log; then
+    log_error "Nginx configuration validation failed!"
+    cat /tmp/nginx_test.log
+    exit 1
+fi
+
+log "✅ Nginx configuration is valid"
+
+# ============================================
 # Start Supervisor (use correct config path)
 # Note: Do NOT pass "$@" here as Dockerfile CMD already contains the full supervisord command
 # ============================================
