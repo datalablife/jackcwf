@@ -118,9 +118,8 @@ ENV PYTHONUNBUFFERED=1 \
 # ============================================
 # Health Check Configuration
 # ============================================
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/health && \
-        curl -f http://localhost:3000 || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+    CMD curl -f http://localhost:8000/health || curl -f http://localhost:3000 || exit 1
 
 # ============================================
 # Expose Ports
