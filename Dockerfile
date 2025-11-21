@@ -38,6 +38,11 @@ COPY frontend/ ./
 # Build frontend (Vite outputs to /build/dist)
 RUN npm run build
 
+# Verify frontend build succeeded
+RUN test -f /build/dist/index.html || \
+    (echo "ERROR: Frontend build failed - index.html not found" && exit 1) && \
+    ls -la /build/dist/ && echo "✅ Frontend build verified"
+
 # ============================================
 # Stage 3: Final Production Image
 # ============================================
@@ -71,10 +76,15 @@ COPY pyproject.toml .
 # Copy Frontend Build Result
 # ============================================
 COPY --from=frontend-builder /build/dist /usr/share/nginx/html
+
+# Verify frontend files were copied successfully
+RUN test -f /usr/share/nginx/html/index.html || \
+    (echo "ERROR: Frontend files not copied - index.html not found" && exit 1) && \
+    ls -la /usr/share/nginx/html/ && echo "✅ Frontend files verified in Nginx root"
+
 COPY frontend/package*.json frontend/
 
-# Install serve (for production frontend)
-RUN npm install -g serve
+# Note: Removed npm install -g serve (redundant - Nginx serves frontend files)
 
 # ============================================
 # Configure Supervisor
