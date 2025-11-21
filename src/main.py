@@ -289,6 +289,11 @@ from src.api.claude_cache_routes import router as claude_cache_router
 app.include_router(claude_cache_router)
 logger.info("Registered Claude Prompt Cache routes")
 
+# Thread API routes (Epic 4 - LangGraph Integration)
+from src.api.thread_routes import router as thread_router
+app.include_router(thread_router)
+logger.info("Registered Thread API routes")
+
 # Initialize Claude integration with caching
 from src.services.claude_integration import initialize_claude_integration
 initialize_claude_integration()

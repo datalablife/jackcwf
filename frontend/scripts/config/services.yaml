@@ -1,0 +1,47 @@
+# Service Configuration for Health Monitor
+# This file defines service health check parameters
+
+services:
+  backend:
+    name: "Backend API"
+    health_url: "${BACKEND_HEALTH_URL:-http://localhost:8000/health}"
+    check_interval: 30
+    timeout: 10
+    unhealthy_threshold: 3
+    recovery_threshold: 2
+    restart_command: "supervisorctl restart backend"
+    dependencies: []
+
+  frontend:
+    name: "Frontend App"
+    health_url: "${FRONTEND_HEALTH_URL:-http://localhost:3000}"
+    check_interval: 30
+    timeout: 15
+    unhealthy_threshold: 3
+    recovery_threshold: 2
+    restart_command: "supervisorctl restart frontend"
+    dependencies:
+      - backend  # Frontend depends on backend
+
+alerts:
+  webhook_url: "${ALERT_WEBHOOK_URL:-}"
+  email:
+    enabled: false
+    recipients: []
+
+  thresholds:
+    cpu_percent: 90
+    memory_percent: 85
+    disk_percent: 90
+    response_time_ms: 5000
+
+logging:
+  level: INFO
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+  output: stdout
+
+recovery:
+  max_restarts: 5
+  restart_window_minutes: 10
+  backoff_multiplier: 2
+  initial_backoff_seconds: 5

@@ -8,7 +8,7 @@ from typing import Optional, List
 from functools import lru_cache
 
 import jwt
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, status, Depends
 from jwt import ExpiredSignatureError, InvalidTokenError
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -258,3 +258,30 @@ def verify_jwt_token(token: str) -> Optional[str]:
     """Expose JWT verification for dependencies that can't run the middleware."""
     helper = _get_auth_helper()
     return helper.verify_token(token)
+
+
+async def get_current_user(request: Request) -> str:
+    """
+    FastAPI dependency to extract authenticated user ID from request.
+
+    This function is used as a Depends() parameter in route handlers to
+    automatically extract and validate the user_id from the request state.
+
+    The AuthenticationMiddleware must be registered to populate request.state.user_id.
+
+    Args:
+        request: FastAPI request object with state populated by AuthenticationMiddleware
+
+    Returns:
+        user_id: The authenticated user's ID string
+
+    Raises:
+        HTTPException: 401 Unauthorized if user is not authenticated
+    """
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not authenticated",
+        )
+    return user_id
