@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
 
 # Copy dependency files AND source code for editable install
 COPY pyproject.toml pyproject.toml
-COPY README.md README.md
 COPY src/ src/
 
 # Install dependencies using uv (faster than pip)

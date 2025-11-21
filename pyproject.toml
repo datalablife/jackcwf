@@ -6,7 +6,6 @@ build-backend = "hatchling.build"
 name = "working"
 version = "0.1.0"
 description = "AI Data Analyzer - Full-stack application with React frontend and FastAPI backend"
-readme = "README.md"
 license = {text = "MIT"}
 authors = [
     {name = "Jack", email = "jack@example.com"}
