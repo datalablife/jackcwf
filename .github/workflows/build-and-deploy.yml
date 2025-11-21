@@ -1,0 +1,102 @@
+name: Build and Deploy to Coolify
+
+on:
+  push:
+    branches:
+      - main
+      - feature/epic4-hybrid-frontend
+    paths:
+      - 'src/**'
+      - 'frontend/src/**'
+      - 'Dockerfile'
+      - 'docker/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - 'frontend/package.json'
+      - '.github/workflows/build-and-deploy.yml'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Deploy to Coolify
+        if: github.ref == 'refs/heads/main'
+        env:
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          COOLIFY_FQDN: ${{ secrets.COOLIFY_FQDN }}
+          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
+        run: |
+          echo "Deploying to Coolify..."
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }}"
+          echo "Image tag: $IMAGE_TAG"
+
+          # 使用 Coolify API 更新应用
+          curl -X POST \
+            -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d "{\"image\": \"$IMAGE_TAG\"}" \
+            "$COOLIFY_FQDN/api/v1/applications/$COOLIFY_APP_UUID/deploy" \
+            || echo "Note: Coolify deployment via API, may need manual trigger"
+
+      - name: Create deployment summary
+        if: always()
+        run: |
+          cat > deployment-summary.txt << EOF
+          # Deployment Summary
+
+          - Repository: ${{ github.repository }}
+          - Branch: ${{ github.ref }}
+          - Commit: ${{ github.sha }}
+          - Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          - Registry: GHCR (GitHub Container Registry)
+
+          ## Next Steps:
+          1. Image is pushed to: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          2. Update Coolify app with new image
+          3. Verify deployment at Coolify dashboard
+          EOF
+          cat deployment-summary.txt
