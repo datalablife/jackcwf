@@ -118,14 +118,15 @@ ENV PYTHONUNBUFFERED=1 \
 # ============================================
 # Health Check Configuration
 # ============================================
-# Temporarily disabled for debugging - container will run without health checks
-# HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
-#     CMD curl -f http://localhost:8000/health || curl -f http://localhost:3000 || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=5 \
+    CMD curl -f http://localhost/health || exit 1
 
 # ============================================
 # Expose Ports
 # ============================================
-EXPOSE 3000 8000
+# Main entry point is port 80 (Nginx reverse proxy)
+# Backend (8000) and Frontend (3000) are internal only
+EXPOSE 80
 
 # ============================================
 # Startup
