@@ -15,7 +15,6 @@ RUN apt-get update && apt-get install -y \
 
 # 复制依赖文件
 COPY pyproject.toml pyproject.toml
-COPY uv.lock uv.lock 2>/dev/null || true
 
 # 使用 uv 快速安装
 RUN pip install uv && \
@@ -63,7 +62,6 @@ COPY --from=backend-builder /usr/local/bin /usr/local/bin
 # 复制后端源码
 COPY src/ ./src/
 COPY pyproject.toml .
-COPY .env.example .env.example 2>/dev/null || true
 
 # ============================================
 # 复制前端构建结果
