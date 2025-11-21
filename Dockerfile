@@ -79,8 +79,7 @@ RUN npm install -g serve
 # ============================================
 RUN mkdir -p /etc/supervisor/conf.d /var/log/supervisor /var/log/app
 
-COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY docker/programs/ /etc/supervisor/conf.d/programs/
+COPY docker/supervisord.conf /etc/supervisor/supervisord.conf
 
 # ============================================
 # 配置 Nginx (前端反向代理)
