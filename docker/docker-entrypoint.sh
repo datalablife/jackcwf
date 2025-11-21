@@ -158,6 +158,7 @@ log "=========================================="
 
 # ============================================
 # Start Supervisor (use correct config path)
+# Note: Do NOT pass "$@" here as Dockerfile CMD already contains the full supervisord command
 # ============================================
 
-exec supervisord -c /etc/supervisor/supervisord.conf "$@"
+exec supervisord -c /etc/supervisor/supervisord.conf
