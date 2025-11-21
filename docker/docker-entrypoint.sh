@@ -70,6 +70,7 @@ log "Checking database connectivity..."
 DB_CHECK_TIMEOUT=30
 DB_CHECK_INTERVAL=2
 DB_CHECKED=false
+DB_CHECK_RESULT=""
 
 for ((i=0; i<DB_CHECK_TIMEOUT; i+=DB_CHECK_INTERVAL)); do
     if python3 << 'EOF'
@@ -85,7 +86,8 @@ async def check_db():
             await conn.execute(text("SELECT 1"))
         await engine.dispose()
         return True
-    except Exception:
+    except Exception as e:
+        print(f"DB Error: {type(e).__name__}: {str(e)[:100]}")
         return False
 
 if asyncio.run(check_db()):
@@ -95,17 +97,19 @@ else:
 EOF
     then
         DB_CHECKED=true
+        DB_CHECK_RESULT="✅ Database connection successful"
         break
     fi
-    log "Database not ready yet, retrying in ${DB_CHECK_INTERVAL}s..."
+    log "Database not ready yet, retrying in ${DB_CHECK_INTERVAL}s... (${i}/${DB_CHECK_TIMEOUT}s)"
     sleep $DB_CHECK_INTERVAL
 done
 
 if [ "$DB_CHECKED" = true ]; then
-    log "Database connection successful"
+    log "$DB_CHECK_RESULT"
 else
-    log_error "Failed to connect to database after ${DB_CHECK_TIMEOUT}s"
-    exit 1
+    log_warn "⚠️  Database connection failed after ${DB_CHECK_TIMEOUT}s"
+    log_warn "Continuing startup anyway - Supervisor will start services"
+    log_warn "This may affect backend API functionality, but frontend and Nginx will still run"
 fi
 
 # ============================================
