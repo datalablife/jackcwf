@@ -1,11 +1,11 @@
 #!/bin/bash
-# Docker 容器启动脚本
-# 用于初始化环境并启动 Supervisor
+# Docker Container Startup Script
+# Initializes environment and starts Supervisor
 
 set -e
 
 # ============================================
-# 配置
+# Configuration
 # ============================================
 
 LOG_DIR="/var/log/app"
@@ -13,7 +13,7 @@ APP_LOG_DIR="/app/logs"
 SUPERVISOR_LOG_DIR="/var/log/supervisor"
 
 # ============================================
-# 日志函数
+# Logging Functions
 # ============================================
 
 log() {
@@ -29,21 +29,21 @@ log_warn() {
 }
 
 # ============================================
-# 初始化
+# Initialization
 # ============================================
 
 log "=========================================="
 log "Docker Container Startup"
 log "=========================================="
 
-# 创建日志目录
+# Create log directories
 mkdir -p "$LOG_DIR" "$APP_LOG_DIR" "$SUPERVISOR_LOG_DIR"
 chmod 777 "$LOG_DIR" "$APP_LOG_DIR" "$SUPERVISOR_LOG_DIR"
 
 log "Log directories created"
 
 # ============================================
-# 环境变量验证
+# Environment Variable Verification
 # ============================================
 
 log "Verifying environment variables..."
@@ -59,10 +59,10 @@ for var in "${required_vars[@]}"; do
     fi
 done
 
-log "✓ Required environment variables verified"
+log "Required environment variables verified"
 
 # ============================================
-# 数据库连接检查
+# Database Connection Check
 # ============================================
 
 log "Checking database connectivity..."
@@ -102,19 +102,19 @@ EOF
 done
 
 if [ "$DB_CHECKED" = true ]; then
-    log "✓ Database connection successful"
+    log "Database connection successful"
 else
     log_error "Failed to connect to database after ${DB_CHECK_TIMEOUT}s"
     exit 1
 fi
 
 # ============================================
-# 环境初始化
+# Environment Initialization
 # ============================================
 
 log "Initializing application environment..."
 
-# 确保 .env 文件存在
+# Ensure .env file exists
 if [ ! -f "/app/.env" ]; then
     log_warn ".env file not found, using .env.example as template"
     if [ -f "/app/.env.example" ]; then
@@ -122,20 +122,20 @@ if [ ! -f "/app/.env" ]; then
     fi
 fi
 
-# 设置权限
+# Set permissions
 chmod 644 /app/.env 2>/dev/null || true
 
-log "✓ Environment initialized"
+log "Environment initialized"
 
 # ============================================
-# 预热检查
+# Pre-startup Checks
 # ============================================
 
 log "Pre-startup checks..."
 
-# 检查必需的文件
+# Check required files (use correct supervisor config path)
 files_to_check=(
-    "/etc/supervisor/conf.d/supervisord.conf"
+    "/etc/supervisor/supervisord.conf"
     "/app/scripts/monitor/health_monitor.py"
 )
 
@@ -146,10 +146,10 @@ for file in "${files_to_check[@]}"; do
     fi
 done
 
-log "✓ All required files present"
+log "All required files present"
 
 # ============================================
-# 启动日志记录
+# Startup Logging
 # ============================================
 
 log "=========================================="
@@ -157,7 +157,7 @@ log "Starting Supervisor..."
 log "=========================================="
 
 # ============================================
-# 启动 Supervisor
+# Start Supervisor (use correct config path)
 # ============================================
 
-exec supervisord -c /etc/supervisor/conf.d/supervisord.conf "$@"
+exec supervisord -c /etc/supervisor/supervisord.conf "$@"

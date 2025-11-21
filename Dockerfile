@@ -1,48 +1,49 @@
-# 多阶段构建 Docker 镜像
-# 支持 Supervisor 进程管理，整合前后端服务
+# Multi-stage Docker build
+# Supports Supervisor process management with integrated frontend/backend services
 
 # ============================================
-# 阶段 1: 构建后端依赖
+# Stage 1: Build Backend Dependencies
 # ============================================
 FROM python:3.12-slim AS backend-builder
 
 WORKDIR /build
 
-# 安装构建工具
+# Install build tools
 RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# 复制依赖文件
+# Copy dependency files AND source code for editable install
 COPY pyproject.toml pyproject.toml
+COPY src/ src/
 
-# 使用 uv 快速安装
+# Install dependencies using uv (faster than pip)
 RUN pip install uv && \
-    uv pip install -e "." --system
+    uv pip install "." --system
 
 # ============================================
-# 阶段 2: 构建前端
+# Stage 2: Build Frontend
 # ============================================
 FROM node:20-slim AS frontend-builder
 
 WORKDIR /build
 
-# 复制前端文件
+# Copy frontend files
 COPY frontend/package*.json ./
 RUN npm ci
 
-# 复制源码
+# Copy source code
 COPY frontend/ ./
 
-# 构建前端
+# Build frontend (Vite outputs to /build/dist)
 RUN npm run build
 
 # ============================================
-# 阶段 3: 最终生产镜像
+# Stage 3: Final Production Image
 # ============================================
 FROM python:3.12-slim
 
-# 安装运行时依赖
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     nodejs npm \
     supervisor \
@@ -54,59 +55,59 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # ============================================
-# 复制后端依赖和代码
+# Copy Backend Dependencies and Code
 # ============================================
 COPY --from=backend-builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=backend-builder /usr/local/bin /usr/local/bin
 
-# 复制后端源码
+# Copy backend source code
 COPY src/ ./src/
 COPY pyproject.toml .
 
 # ============================================
-# 复制前端构建结果
+# Copy Frontend Build Result
 # ============================================
 COPY --from=frontend-builder /build/dist /usr/share/nginx/html
 COPY frontend/package*.json frontend/
 
-# 安装 serve (用于生产环境前端)
+# Install serve (for production frontend)
 RUN npm install -g serve
 
 # ============================================
-# 配置 Supervisor
+# Configure Supervisor
 # ============================================
 RUN mkdir -p /etc/supervisor/conf.d /var/log/supervisor /var/log/app
 
 COPY docker/supervisord.conf /etc/supervisor/supervisord.conf
 
 # ============================================
-# 配置 Nginx (前端反向代理)
+# Configure Nginx (Frontend Reverse Proxy)
 # ============================================
 COPY docker/nginx.conf /etc/nginx/nginx.conf
 
 # ============================================
-# 健康监控脚本
+# Health Monitoring Scripts
 # ============================================
 RUN mkdir -p /app/scripts/monitor
 COPY scripts/monitor/ /app/scripts/monitor/
 
-RUN chmod +x /app/scripts/monitor/*.py \
-    && chmod +x /app/scripts/monitor/*.sh
+# Make Python scripts executable (only .py files exist)
+RUN chmod +x /app/scripts/monitor/*.py 2>/dev/null || true
 
 # ============================================
-# 启动脚本
+# Startup Script
 # ============================================
 COPY docker/docker-entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # ============================================
-# 日志目录和权限
+# Log Directories and Permissions
 # ============================================
 RUN mkdir -p /var/log/app /var/log/supervisor /app/logs && \
     chmod 777 /var/log/app /var/log/supervisor /app/logs
 
 # ============================================
-# 环境变量配置
+# Environment Variables
 # ============================================
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -115,19 +116,19 @@ ENV PYTHONUNBUFFERED=1 \
     LOG_LEVEL=info
 
 # ============================================
-# 健康检查配置
+# Health Check Configuration
 # ============================================
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8000/health && \
         curl -f http://localhost:3000 || exit 1
 
 # ============================================
-# 暴露端口
+# Expose Ports
 # ============================================
 EXPOSE 3000 8000
 
 # ============================================
-# 启动
+# Startup
 # ============================================
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
