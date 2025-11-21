@@ -30,7 +30,7 @@ WORKDIR /build
 
 # Copy frontend files
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source code
 COPY frontend/ ./
