@@ -50,14 +50,17 @@ LICENSE
 Jenkinsfile
 docker-compose.yml
 docker-compose*.yml
-Dockerfile*
+# Note: Dockerfile and .dockerignore intentionally NOT excluded
+# Docker daemon reads Dockerfile directly, not via .dockerignore
 .dockerignore
 
 # Development scripts and tools
 scripts/dev/
 scripts/test/
 Makefile
-*.sh
+# Note: *.sh was blocking docker/docker-entrypoint.sh which is CRITICAL for container startup
+# Instead, explicitly exclude development scripts only
+!docker/
 !scripts/lib/
 !scripts/config/
 !scripts/container/
