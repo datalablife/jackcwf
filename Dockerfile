@@ -50,7 +50,10 @@ RUN apt-get update && apt-get install -y \
     nginx \
     curl \
     git \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /var/cache/nginx /run && \
+    touch /run/nginx.pid && \
+    chown -R root:root /var/cache/nginx
 
 WORKDIR /app
 

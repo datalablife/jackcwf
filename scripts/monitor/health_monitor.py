@@ -20,7 +20,7 @@ from pathlib import Path
 
 # 监控配置
 BACKEND_URL = os.getenv("BACKEND_HEALTH_URL", "http://localhost:8000/health")
-FRONTEND_URL = os.getenv("FRONTEND_HEALTH_URL", "http://localhost:3000")
+FRONTEND_URL = os.getenv("FRONTEND_HEALTH_URL", "http://localhost:80")
 CHECK_INTERVAL = int(os.getenv("HEALTH_CHECK_INTERVAL", "30"))  # 秒
 MAX_FAILURES = int(os.getenv("MAX_HEALTH_FAILURES", "3"))
 TIMEOUT = int(os.getenv("HEALTH_CHECK_TIMEOUT", "5"))  # 秒

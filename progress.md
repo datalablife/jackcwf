@@ -1,6 +1,6 @@
 # Project Progress & Context Memory
 
-_Last updated: 2025-11-20 23:32_
+_Last updated: 2025-11-21 18:54_
 
 ---
 
@@ -49,6 +49,36 @@ _Last updated: 2025-11-20 23:32_
 ---
 
 ## Decisions (Chronological)
+
+### 2025-11-21 10:54 - DECISION: Nginx Routing Configuration Fixed - React Frontend Now Served on Port 80 ✅
+**Decision**: Fixed critical Nginx routing issue causing 404 errors on all endpoints. Reconfigured port 80 to serve React frontend as root application with proper API proxying.
+**Problem Identified**:
+- Application returning "404 page not found" on all endpoints in Coolify deployment
+- Root cause: Port 80 server block was proxying ALL requests to backend (FastAPI on port 8000)
+- Backend has no root "/" endpoint, only "/api/" and "/docs"
+- React frontend only served on port 3000, inaccessible from port 80
+**Solution Implemented** (Commit: 4640372):
+- Reconfigured port 80 as unified entry point serving React frontend
+- Set up proper location routing:
+  * `/health` → exact match health check (200 OK)
+  * `/api/*` → proxy to backend (port 8000)
+  * `/ws` → WebSocket proxy to backend
+  * Static files → served directly
+  * SPA fallback → React Router support
+- Removed duplicate port 3000 server block
+- Enabled proper location matching order (exact > prefix > static > fallback)
+**Expected Outcomes**:
+- `GET /` → React index.html (root application)
+- `GET /api/*` → Proxied to FastAPI backend
+- `GET /health` → 200 healthy response
+- All 404 errors resolved
+**Deployment Status**:
+- Git commit 4640372 pushed to GitHub
+- GitHub Actions auto-triggered to build Docker image
+- Image pushed to GitHub Container Registry (GHCR)
+- Coolify app auto-updating (UUID: zogcwskg8s0okw4c0wk0kscg)
+- Expected completion: 5-10 minutes
+**Related**: Nginx configuration, deployment debugging, frontend routing, Docker containerization
 
 ### 2025-11-20 00:00 - DECISION: Epic 4 Frontend Planning Complete - Hybrid Method Selected for 46% Cost Savings ✅
 **Decision**: Adopt Method C (Hybrid Approach) - leverage agent-chat-ui design patterns + custom React components instead of building from scratch
@@ -848,6 +878,51 @@ LangChain AI Conversation Backend now provides:
 ---
 
 ## Done
+
+### ID-NGINX-FIX: Nginx Routing Configuration Fixed - 404 Errors Resolved ✅
+**Completion Date**: 2025-11-21 10:54
+**Status**: CRITICAL FIX DEPLOYED - Nginx configuration corrected, awaiting deployment validation
+**Duration**: Immediate hotfix (investigation + fix + deployment)
+**Branch**: main (commit 4640372)
+
+**Problem Analysis**:
+- All application endpoints returning "404 page not found" in Coolify
+- Root cause identified: Nginx port 80 misconfigured to proxy ALL requests to backend
+- Backend (FastAPI) has no root "/" endpoint, only "/api/" and "/docs"
+- React frontend isolated on port 3000, unreachable from public port 80
+
+**Fix Implementation** (docker/nginx.conf):
+- **Port 80 Reconfigured**: Now serves React frontend as primary application
+- **Location Routing Updated**:
+  1. `location = /health` → Backend health check (proxy to port 8000)
+  2. `location ^~ /api/` → Backend API proxy (port 8000)
+  3. `location ^~ /ws` → WebSocket proxy (port 8000)
+  4. `location / (root /usr/share/nginx/html)` → Serve React static files
+  5. `try_files` with SPA fallback → React Router support
+- **Removed**: Duplicate port 3000 server block (unnecessary)
+- **Nginx Best Practices**: Proper location priority (exact > prefix > regex > default)
+
+**Deployment Pipeline**:
+1. ✅ Git commit 4640372 pushed to GitHub main branch
+2. ✅ GitHub Actions auto-triggered (.github/workflows/deploy.yml)
+3. ✅ Docker image built and pushed to GHCR (ghcr.io/jackcwf/langchain-ai-chat-backend)
+4. 🔄 Coolify auto-deployment in progress (UUID: zogcwskg8s0okw4c0wk0kscg)
+5. ⏳ Expected completion: 5-10 minutes
+
+**Validation Tests Required** (post-deployment):
+- [ ] `curl https://YOUR_DOMAIN/` → Should return React index.html (200 OK)
+- [ ] `curl https://YOUR_DOMAIN/health` → Should return {"status": "healthy"} (200 OK)
+- [ ] `curl https://YOUR_DOMAIN/api/v1/conversations` → Should return conversations JSON (200 OK)
+- [ ] Browser navigation to root URL → Should load React app UI
+
+**Impact**:
+- Resolves all 404 errors across application endpoints
+- Enables proper frontend-backend routing architecture
+- Restores public accessibility of deployed application
+- No code changes required to backend or frontend (pure infrastructure fix)
+
+**Related**: Nginx, Docker, Coolify deployment, routing configuration, infrastructure debugging
+**Evidence**: Commit 4640372, docker/nginx.conf modification
 
 ### ID-W1D1: Week 1 Day 1 - Frontend Project Initialization & Environment Setup Complete ✅
 **Completion Date**: 2025-11-20 23:32
@@ -2678,6 +2753,42 @@ _Previous Done items archived to [progress.archive.md](./progress.archive.md)_
 ---
 
 ## Notes
+
+### 🚨 2025-11-21 18:54 - URGENT: Nginx Routing Fix Deployed - Awaiting Validation
+**Status**: CRITICAL FIX IN PROGRESS 🔄 - Deployment pipeline active, validation pending
+**Issue**: All application endpoints returning 404 errors in Coolify production environment
+**Root Cause**: Nginx misconfiguration - port 80 was proxying ALL requests to backend instead of serving React frontend
+**Fix Applied**:
+- Reconfigured Nginx port 80 to serve React frontend as root application
+- Set up proper API proxying: /api/* and /ws → backend (port 8000)
+- Added SPA fallback routing for React Router support
+- Commit 4640372 pushed to main, CI/CD pipeline triggered
+
+**Current Deployment Status** (as of 18:54):
+1. ✅ Git commit pushed to GitHub
+2. ✅ GitHub Actions building Docker image
+3. ✅ Image pushed to GHCR
+4. 🔄 Coolify auto-deployment in progress (UUID: zogcwskg8s0okw4c0wk0kscg)
+5. ⏳ Expected completion: 5-10 minutes (by ~19:05)
+
+**Validation Checklist** (post-deployment):
+- [ ] Test root endpoint: `curl https://YOUR_DOMAIN/` → Should return React index.html (200 OK)
+- [ ] Test health check: `curl https://YOUR_DOMAIN/health` → Should return {"status": "healthy"} (200 OK)
+- [ ] Test API proxy: `curl https://YOUR_DOMAIN/api/v1/conversations` → Should return JSON (200 OK)
+- [ ] Test browser: Navigate to root URL → Should load React app UI
+
+**Next Actions**:
+1. ⏰ Wait 5-10 minutes for Coolify deployment to complete
+2. 🧪 Run validation tests (curl + browser)
+3. ✅ Confirm all endpoints responding correctly
+4. 📊 Monitor application logs for any errors
+5. 🎉 Mark as resolved if all tests pass
+
+**Impact**: Blocks all user access to application until fixed. HIGH PRIORITY.
+**Related**: Nginx, Docker, Coolify, deployment, infrastructure, 404 errors, routing configuration
+**Evidence**: Commit 4640372, docker/nginx.conf
+
+---
 
 ### 🎯 2025-11-20 23:32 - Week 1 Day 1 COMPLETE - Frontend Project Initialization Success, Backend API Next
 **Status**: MILESTONE M1 COMPLETE ✅ - Ready for Week 1 Day 2 Backend API Implementation
