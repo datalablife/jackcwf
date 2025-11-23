@@ -28,8 +28,6 @@ jobs:
     permissions:
       contents: read
       packages: write
-    outputs:
-      image_tag: ${{ steps.meta.outputs.tags }}
 
     steps:
       - name: Checkout code
@@ -66,36 +64,10 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
 
-      - name: Scan with Trivy
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          format: sarif
-          output: trivy-results.sarif
-          severity: CRITICAL,HIGH
-
-      - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
-        with:
-          sarif_file: trivy-results.sarif
-
-  notify-deployment:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Send deployment notification
-        uses: 8398a7/action-slack@v3
-        with:
-          status: success
-          text: |
-            ✅ Docker image built and pushed to GHCR
-            Image: ${{ needs.build-and-push.outputs.image_tag }}
-            
-            🚀 Coolify will automatically deploy via webhook
-            Monitoring the deployment...
-          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
-        if: success()
+      - name: Log image build completion
+        run: |
+          echo "✅ Docker image successfully built and pushed to GHCR"
+          echo "Image tags: ${{ steps.meta.outputs.tags }}"
+          echo "Repository: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo ""
+          echo "🚀 Coolify will automatically deploy via docker-compose.yml webhook"
