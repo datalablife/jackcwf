@@ -65,7 +65,7 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64
           build-args: |
-            BUILD_TIMESTAMP=${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || github.event.repository.updated_at }}
+            BUILD_TIMESTAMP=${{ github.run_id }}-${{ github.run_number }}-${{ github.event.head_commit.id }}
 
       - name: Log image build completion
         run: |
