@@ -4,22 +4,23 @@ on:
   push:
     branches:
       - main
-      - feature/epic4-hybrid-frontend
     paths:
       - 'src/**'
       - 'frontend/src/**'
       - 'Dockerfile'
-      - '.dockerignore'  # Critical: Ensure Docker build configuration changes trigger rebuild
+      - '.dockerignore'
       - 'docker/**'
-      - 'scripts/**'
+      - 'docker-compose.yml'
+      - 'monitoring/**'
       - 'pyproject.toml'
-      - 'frontend/package.json'
       - '.github/workflows/build-and-deploy.yml'
   workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  DOCKER_BUILDKIT: 1
+  COMPOSE_DOCKER_CLI_BUILD: 1
 
 jobs:
   build-and-push:
@@ -27,6 +28,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tags }}
 
     steps:
       - name: Checkout code
@@ -49,12 +52,10 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
             type=sha,prefix={{branch}}-
             type=raw,value=latest,enable={{is_default_branch}}
 
-      - name: Build and push Docker image
+      - name: Build and push Docker image (4GB Optimized)
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -63,41 +64,38 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          platforms: linux/amd64
 
-      - name: Deploy to Coolify
-        if: github.ref == 'refs/heads/main'
-        env:
-          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
-          COOLIFY_FQDN: ${{ secrets.COOLIFY_FQDN }}
-          COOLIFY_APP_UUID: ${{ secrets.COOLIFY_APP_UUID }}
-        run: |
-          echo "Deploying to Coolify..."
-          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }}"
-          echo "Image tag: $IMAGE_TAG"
+      - name: Scan with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          format: sarif
+          output: trivy-results.sarif
+          severity: CRITICAL,HIGH
 
-          # 使用 Coolify API 更新应用
-          curl -X POST \
-            -H "Authorization: Bearer $COOLIFY_API_TOKEN" \
-            -H "Content-Type: application/json" \
-            -d "{\"image\": \"$IMAGE_TAG\"}" \
-            "$COOLIFY_FQDN/api/v1/applications/$COOLIFY_APP_UUID/deploy" \
-            || echo "Note: Coolify deployment via API, may need manual trigger"
-
-      - name: Create deployment summary
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v2
         if: always()
-        run: |
-          cat > deployment-summary.txt << EOF
-          # Deployment Summary
+        with:
+          sarif_file: trivy-results.sarif
 
-          - Repository: ${{ github.repository }}
-          - Branch: ${{ github.ref }}
-          - Commit: ${{ github.sha }}
-          - Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          - Registry: GHCR (GitHub Container Registry)
+  notify-deployment:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-          ## Next Steps:
-          1. Image is pushed to: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          2. Update Coolify app with new image
-          3. Verify deployment at Coolify dashboard
-          EOF
-          cat deployment-summary.txt
+      - name: Send deployment notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: |
+            ✅ Docker image built and pushed to GHCR
+            Image: ${{ needs.build-and-push.outputs.image_tag }}
+            
+            🚀 Coolify will automatically deploy via webhook
+            Monitoring the deployment...
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: success()
