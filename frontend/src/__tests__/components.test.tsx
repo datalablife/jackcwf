@@ -327,6 +327,7 @@ describe('Sidebar Component', () => {
         onSelectThread={mockSelect}
         onCreateThread={mockCreate}
         onDeleteThread={mockDelete}
+        onClose={vi.fn()}
       />
     );
 
@@ -346,6 +347,7 @@ describe('Sidebar Component', () => {
         onSelectThread={mockSelect}
         onCreateThread={mockCreate}
         onDeleteThread={mockDelete}
+        onClose={vi.fn()}
       />
     );
 
@@ -366,6 +368,7 @@ describe('Sidebar Component', () => {
         onSelectThread={mockSelect}
         onCreateThread={mockCreate}
         onDeleteThread={mockDelete}
+        onClose={vi.fn()}
       />
     );
 
@@ -386,6 +389,7 @@ describe('Sidebar Component', () => {
         onSelectThread={mockSelect}
         onCreateThread={mockCreate}
         onDeleteThread={mockDelete}
+        onClose={vi.fn()}
       />
     );
 
@@ -408,6 +412,7 @@ describe('Sidebar Component', () => {
         onSelectThread={mockSelect}
         onCreateThread={mockCreate}
         onDeleteThread={mockDelete}
+        onClose={vi.fn()}
       />
     );
 
@@ -427,6 +432,7 @@ describe('Sidebar Component', () => {
         onSelectThread={mockSelect}
         onCreateThread={mockCreate}
         onDeleteThread={mockDelete}
+        onClose={vi.fn()}
       />
     );
 
