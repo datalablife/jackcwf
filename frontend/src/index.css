@@ -2,136 +2,162 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom CSS for the application */
+@layer base {
+  :root {
+    /* Premium Color Palette - Interstellar Theme */
+    --background: 220 25% 97%; /* Soft blue-grey background */
+    --foreground: 222 47% 11%; /* Deep navy text */
+    
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    --primary: 221 83% 53%; /* Vibrant Blue */
+    --primary-foreground: 210 40% 98%;
+    
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222 47% 11.2%;
+    
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222 47% 11.2%;
+    
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
 
-/* Base styles */
-body {
-  @apply bg-gray-50;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221 83% 53%;
+    
+    --radius: 0.75rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+    
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11.2%;
+    
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
 }
 
-/* Scrollbar styling */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 dark:bg-black/70 backdrop-blur-lg border border-white/20 dark:border-white/10 shadow-sm;
+  }
+  
+  .glass-hover {
+    @apply hover:bg-white/80 dark:hover:bg-white/5 transition-colors duration-200;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  @apply w-2 h-2;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-400 rounded hover:bg-gray-500;
+  @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
 }
 
-/* Chat message styles */
-.chat-message {
-  @apply mb-4 animate-fadeIn;
+/* Animations */
+@keyframes enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.chat-message.user {
-  @apply ml-auto max-w-xs;
+.animate-enter {
+  animation: enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.chat-message.assistant {
-  @apply mr-auto max-w-xs;
-}
-
-/* Loading animation */
-@keyframes fadeIn {
-  from {
-    @apply opacity-0 translate-y-2;
-  }
-  to {
-    @apply opacity-100 translate-y-0;
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-/* Streaming cursor */
+/* Streaming Cursor */
 .streaming-cursor::after {
-  content: '▌';
-  @apply ml-1 animate-pulse;
+  content: '';
+  @apply inline-block w-2 h-4 ml-1 align-middle bg-primary animate-pulse rounded-sm;
 }
 
-/* Tool panel styles */
-.tool-panel {
-  @apply rounded-lg border border-gray-200 bg-white p-4;
+/* Markdown Styles */
+.prose {
+  @apply text-foreground/90 max-w-none;
 }
 
-.tool-panel-header {
-  @apply mb-3 flex items-center justify-between;
+.prose pre {
+  @apply bg-muted/50 border border-border rounded-lg p-4 overflow-x-auto my-4;
 }
 
-.tool-panel-title {
-  @apply text-sm font-semibold text-gray-900;
+.prose code {
+  @apply bg-muted/50 px-1.5 py-0.5 rounded text-sm font-mono text-primary;
 }
 
-/* Button styles */
-.btn {
-  @apply inline-flex items-center justify-center px-4 py-2 rounded-lg transition;
+.prose pre code {
+  @apply bg-transparent p-0 text-inherit border-none;
 }
 
-.btn-primary {
-  @apply bg-blue-600 text-white hover:bg-blue-700;
+.prose h1, .prose h2, .prose h3, .prose h4 {
+  @apply font-semibold tracking-tight text-foreground mt-8 mb-4;
 }
 
-.btn-secondary {
-  @apply bg-gray-200 text-gray-900 hover:bg-gray-300;
+.prose p {
+  @apply leading-7 mb-4;
 }
 
-.btn-danger {
-  @apply bg-red-600 text-white hover:bg-red-700;
+.prose ul {
+  @apply list-disc list-outside ml-6 mb-4;
 }
 
-/* Input styles */
-.input {
-  @apply block w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 placeholder-gray-400 transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500;
+.prose ol {
+  @apply list-decimal list-outside ml-6 mb-4;
 }
 
-/* Badge styles */
-.badge {
-  @apply inline-flex items-center rounded-full px-3 py-1 text-xs font-medium;
+.prose blockquote {
+  @apply border-l-4 border-primary/30 pl-4 italic text-muted-foreground my-4;
 }
 
-.badge-primary {
-  @apply bg-blue-100 text-blue-700;
-}
-
-.badge-success {
-  @apply bg-green-100 text-green-700;
-}
-
-.badge-warning {
-  @apply bg-yellow-100 text-yellow-700;
-}
-
-.badge-error {
-  @apply bg-red-100 text-red-700;
-}
-
-/* Tooltip styles */
-.tooltip {
-  @apply absolute bottom-full left-1/2 mb-2 -translate-x-1/2 transform whitespace-nowrap rounded-lg bg-gray-900 px-3 py-1 text-sm text-white opacity-0 transition duration-300 group-hover:opacity-100;
-}
-
-/* Modal styles */
-.modal-overlay {
-  @apply fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50;
-}
-
-.modal {
-  @apply w-full max-w-md rounded-lg bg-white p-6 shadow-xl;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-  .chat-message.user {
-    @apply max-w-xs;
-  }
-
-  .chat-message.assistant {
-    @apply max-w-xs;
-  }
+.prose a {
+  @apply text-primary hover:underline underline-offset-4 font-medium transition-colors;
 }

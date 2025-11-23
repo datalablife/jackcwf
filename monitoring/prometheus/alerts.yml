@@ -1,0 +1,297 @@
+# Prometheus Alert Rules
+# Defines alerting thresholds and conditions for monitoring
+
+groups:
+  # ============================================
+  # Application Performance Alerts
+  # ============================================
+  - name: application_performance
+    interval: 30s
+    rules:
+      # High API latency
+      - alert: HighAPILatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_query_latency_ms_bucket[5m])) by (le, model)
+          ) > 3000
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High API latency detected (P95 > 3s)"
+          description: "API latency P95 is {{ $value }}ms for model {{ $labels.model }}"
+          runbook_url: "https://docs.example.com/runbooks/high-latency"
+
+      # Very high API latency - Critical
+      - alert: CriticalAPILatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_query_latency_ms_bucket[5m])) by (le, model)
+          ) > 5000
+        for: 2m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Critical API latency (P95 > 5s)"
+          description: "API latency P95 is {{ $value }}ms for model {{ $labels.model }}"
+          runbook_url: "https://docs.example.com/runbooks/critical-latency"
+
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          sum(rate(llm_cache_misses_total[5m])) by (model) /
+          (sum(rate(llm_cache_hits_total[5m])) by (model) +
+           sum(rate(llm_cache_misses_total[5m])) by (model)) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "High cache miss rate (> 50%)"
+          description: "Cache miss rate is {{ $value | humanizePercentage }} for model {{ $labels.model }}"
+
+  # ============================================
+  # Cache Performance Alerts
+  # ============================================
+  - name: cache_performance
+    interval: 30s
+    rules:
+      # Low cache hit rate
+      - alert: LowCacheHitRate
+        expr: llm_cache_hit_rate < 30
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Low cache hit rate detected (< 30%)"
+          description: "Cache hit rate is {{ $value }}% for model {{ $labels.model }}"
+
+      # Cache size growing rapidly
+      - alert: CacheSizeGrowingRapidly
+        expr: |
+          rate(llm_cache_size_entries[5m]) > 100
+        for: 10m
+        labels:
+          severity: info
+          component: cache
+        annotations:
+          summary: "Cache size growing rapidly"
+          description: "Cache is growing at {{ $value }} entries/sec for model {{ $labels.model }}"
+
+      # Cache table size too large
+      - alert: CacheTableSizeTooLarge
+        expr: llm_cache_table_size_bytes > 10737418240  # 10GB
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Cache table size exceeds 10GB"
+          description: "Cache table size is {{ $value | humanize }}B for model {{ $labels.model }}"
+
+  # ============================================
+  # Resource Utilization Alerts
+  # ============================================
+  - name: resource_utilization
+    interval: 30s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High CPU usage detected (> 80%)"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # Critical CPU usage
+      - alert: CriticalCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) * 100 > 90
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Critical CPU usage (> 90%)"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (process_resident_memory_bytes / node_memory_MemTotal_bytes) * 100 > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage detected (> 80%)"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # Critical memory usage
+      - alert: CriticalMemoryUsage
+        expr: |
+          (process_resident_memory_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Critical memory usage (> 90%)"
+          description: "Memory usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # Disk space low
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} /
+           node_filesystem_size_bytes{mountpoint="/"}) * 100 < 20
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Disk space low (< 20%)"
+          description: "Available disk space is {{ $value }}% on {{ $labels.instance }}"
+
+  # ============================================
+  # Database Health Alerts
+  # ============================================
+  - name: database_health
+    interval: 30s
+    rules:
+      # Database connection pool exhausted
+      - alert: DatabaseConnectionPoolExhausted
+        expr: |
+          sum(pg_stat_database_numbackends) by (datname) /
+          max(pg_settings_max_connections) > 0.8
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted (> 80%)"
+          description: "Database {{ $labels.datname }} is using {{ $value | humanizePercentage }} of max connections"
+
+      # Slow database queries
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_vector_search_latency_ms_bucket[5m])) by (le)
+          ) > 500
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Slow database queries detected (P95 > 500ms)"
+          description: "Vector search latency P95 is {{ $value }}ms"
+
+  # ============================================
+  # Application Health Alerts
+  # ============================================
+  - name: application_health
+    interval: 30s
+    rules:
+      # Service down
+      - alert: ServiceDown
+        expr: up == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: infrastructure
+        annotations:
+          summary: "Service is down"
+          description: "Service {{ $labels.job }} on {{ $labels.instance }} is down"
+
+      # High request error rate
+      - alert: HighRequestErrorRate
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (job) /
+          sum(rate(http_requests_total[5m])) by (job) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High request error rate (> 5%)"
+          description: "Error rate is {{ $value | humanizePercentage }} for {{ $labels.job }}"
+
+      # Too many open file descriptors
+      - alert: TooManyOpenFiles
+        expr: |
+          process_open_fds / process_max_fds > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Too many open file descriptors (> 80%)"
+          description: "{{ $value | humanizePercentage }} of max file descriptors are open on {{ $labels.instance }}"
+
+  # ============================================
+  # LLM Cost and Usage Alerts
+  # ============================================
+  - name: llm_cost_monitoring
+    interval: 60s
+    rules:
+      # High LLM generation latency
+      - alert: HighLLMGenerationLatency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_generation_latency_ms_bucket[5m])) by (le, model)
+          ) > 5000
+        for: 5m
+        labels:
+          severity: warning
+          component: llm
+        annotations:
+          summary: "High LLM generation latency (P95 > 5s)"
+          description: "LLM generation latency P95 is {{ $value }}ms for model {{ $labels.model }}"
+
+      # Embedding service slow
+      - alert: SlowEmbeddingService
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_embedding_latency_ms_bucket[5m])) by (le, model)
+          ) > 500
+        for: 5m
+        labels:
+          severity: warning
+          component: embedding
+        annotations:
+          summary: "Slow embedding service (P95 > 500ms)"
+          description: "Embedding latency P95 is {{ $value }}ms for model {{ $labels.model }}"
+
+  # ============================================
+  # Elasticsearch Health Alerts
+  # ============================================
+  - name: elasticsearch_health
+    interval: 30s
+    rules:
+      # Elasticsearch cluster health
+      - alert: ElasticsearchClusterNotHealthy
+        expr: elasticsearch_cluster_health_status{color="red"} == 1
+        for: 5m
+        labels:
+          severity: critical
+          component: logging
+        annotations:
+          summary: "Elasticsearch cluster is in RED state"
+          description: "Elasticsearch cluster {{ $labels.cluster }} is unhealthy"
+
+      # Elasticsearch heap usage
+      - alert: ElasticsearchHighHeapUsage
+        expr: |
+          (elasticsearch_jvm_memory_used_bytes{area="heap"} /
+           elasticsearch_jvm_memory_max_bytes{area="heap"}) > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          component: logging
+        annotations:
+          summary: "Elasticsearch high heap usage (> 90%)"
+          description: "Elasticsearch heap usage is {{ $value | humanizePercentage }}"

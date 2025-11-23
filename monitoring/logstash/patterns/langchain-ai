@@ -1,0 +1,43 @@
+# Custom Grok Patterns for LangChain AI Application
+
+# FastAPI log patterns
+FASTAPI_TIMESTAMP %{YEAR}-%{MONTHNUM}-%{MONTHDAY} %{TIME}
+FASTAPI_LOGLEVEL (DEBUG|INFO|WARNING|ERROR|CRITICAL)
+FASTAPI_LOGGER [a-zA-Z0-9._]+
+FASTAPI_MESSAGE .+
+
+# Request ID pattern
+REQUEST_ID [a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}
+
+# Conversation/Document IDs
+CONV_ID [0-9]+
+DOC_ID [0-9]+
+
+# Model names
+MODEL_NAME (gpt-4|gpt-3.5-turbo|text-embedding-ada-002|claude-3-opus|claude-3-sonnet)
+
+# Latency patterns
+LATENCY_MS [0-9]+(\.[0-9]+)?
+
+# Cache patterns
+CACHE_HIT (true|false)
+CACHE_DISTANCE [0-9]+(\.[0-9]+)?
+
+# HTTP patterns
+HTTP_STATUS [1-5][0-9]{2}
+HTTP_METHOD (GET|POST|PUT|DELETE|PATCH|OPTIONS|HEAD)
+
+# FastAPI structured log
+FASTAPI_LOG %{FASTAPI_TIMESTAMP:timestamp} - %{FASTAPI_LOGGER:logger} - %{FASTAPI_LOGLEVEL:level} - %{FASTAPI_MESSAGE:message}
+
+# RAG query log
+RAG_QUERY request_id=%{REQUEST_ID:request_id} query="%{DATA:query}" model=%{MODEL_NAME:model} cache_hit=%{CACHE_HIT:cache_hit} latency_ms=%{LATENCY_MS:latency_ms}
+
+# Cache operation log
+CACHE_OP cache_operation=%{WORD:operation} model=%{MODEL_NAME:model} distance=%{CACHE_DISTANCE:distance} hit=%{CACHE_HIT:hit}
+
+# Document processing log
+DOC_PROCESS document_id=%{DOC_ID:document_id} filename="%{DATA:filename}" chunks=%{NUMBER:chunks} status=%{WORD:status}
+
+# Conversation log
+CONV_LOG conversation_id=%{CONV_ID:conversation_id} user_id=%{DATA:user_id} message_count=%{NUMBER:message_count}

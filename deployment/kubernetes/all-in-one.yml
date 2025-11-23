@@ -1,0 +1,486 @@
+# Kubernetes Deployment for Jackcwf Backend
+# High-availability deployment with 3 replicas, auto-scaling, and service mesh ready
+#
+# Usage:
+#   kubectl apply -f deployment/kubernetes/namespace.yml
+#   kubectl apply -f deployment/kubernetes/configmap.yml
+#   kubectl apply -f deployment/kubernetes/secret.yml
+#   kubectl apply -f deployment/kubernetes/deployment.yml
+#   kubectl apply -f deployment/kubernetes/service.yml
+#   kubectl apply -f deployment/kubernetes/ingress.yml
+#   kubectl apply -f deployment/kubernetes/hpa.yml
+
+---
+# ============================================
+# Namespace
+# ============================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jackcwf
+  labels:
+    name: jackcwf
+    environment: production
+
+---
+# ============================================
+# ConfigMap (Non-sensitive configuration)
+# ============================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jackcwf-config
+  namespace: jackcwf
+data:
+  APP_NAME: "AI Data Analyzer"
+  APP_VERSION: "1.0.0"
+  DEBUG: "false"
+  LOG_LEVEL: "info"
+  ENVIRONMENT: "production"
+
+  # CORS Configuration
+  ALLOWED_ORIGINS: "http://localhost:3000,http://localhost:8000,https://jackcwf.com"
+
+  # Monitoring
+  ENABLE_MONITORING: "true"
+  MONITORING_INTERVAL_SECONDS: "10"
+
+  # Health check
+  HEALTH_CHECK_TIMEOUT_MS: "2000"
+
+  # Worker configuration
+  UVICORN_WORKERS: "2"
+
+  # Graceful shutdown
+  GRACEFUL_SHUTDOWN_TIMEOUT: "30"
+
+  # File upload
+  MAX_FILE_SIZE: "536870912"
+  UPLOAD_DIR: "/app/tmp/uploads"
+
+  # Timezone
+  TZ: "Asia/Shanghai"
+
+---
+# ============================================
+# Secret (Sensitive data - encode with base64)
+# ============================================
+# To encode: echo -n 'your-secret' | base64
+apiVersion: v1
+kind: Secret
+metadata:
+  name: jackcwf-secret
+  namespace: jackcwf
+type: Opaque
+data:
+  # Database credentials (base64 encoded)
+  # Example: postgresql+asyncpg://user:pass@host:5432/db
+  DATABASE_URL: cG9zdGdyZXNxbCthc3luY3BnOi8vamFja2N3Zjg4ODpKYWNrXzAwNDkyMzAwQDQ3Ljc5Ljg3LjE5OTo1NDMyL3Bvc3RncmVz
+  DATABASE_URL_SYNC: cG9zdGdyZXNxbDovL2phY2tjd2Y4ODg6SmFja18wMDQ5MjMwMEA0Ny43OS44Ny4xOTk6NTQzMi9wb3N0Z3Jlcw==
+
+  # LLM API Keys (base64 encoded)
+  OPENAI_API_KEY: c2stbXc1dGpTakd2cnhLVm43NFF0bHQwSGliUkg1TTR1V3NlWDYwRWpia1V6U3ZyU3h4
+  ANTHROPIC_API_KEY: c2stbXc1dGpTakd2cnhLVm43NFF0bHQwSGliUkg1TTR1V3NlWDYwRWpia1V6U3ZyU3h4
+
+  # Encryption key (base64 encoded)
+  ENCRYPTION_KEY: cGxhY2Vob2xkZXItMjU2LWJpdC1rZXktYmFzZTY0LWVuY29kZWQtY2hhbmdlLWluLXByb2R1Y3Rpb24=
+
+stringData:
+  # Non-base64 encoded strings (Kubernetes will encode them)
+  OPENAI_BASE_URL: "https://anyrouter.top"
+  ANTHROPIC_BASE_URL: "https://anyrouter.top"
+
+---
+# ============================================
+# Deployment
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jackcwf-backend
+  namespace: jackcwf
+  labels:
+    app: jackcwf-backend
+    version: v1
+spec:
+  replicas: 3  # Initial replica count (HPA will adjust this)
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Allow 1 extra pod during update
+      maxUnavailable: 1  # Allow 1 pod to be unavailable during update
+
+  selector:
+    matchLabels:
+      app: jackcwf-backend
+
+  template:
+    metadata:
+      labels:
+        app: jackcwf-backend
+        version: v1
+      annotations:
+        # Prometheus scraping
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+
+    spec:
+      # ============================================
+      # Pod Anti-Affinity (spread replicas across nodes)
+      # ============================================
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: jackcwf-backend
+                topologyKey: kubernetes.io/hostname
+
+      # ============================================
+      # Init Containers (Database migration)
+      # ============================================
+      initContainers:
+        - name: db-migration
+          image: jackcwf-backend:latest
+          imagePullPolicy: Always
+          command:
+            - sh
+            - -c
+            - |
+              echo "Running database migrations..."
+              python -c "
+              import asyncio
+              from src.db.config import engine
+              from src.db.migrations import init_db
+
+              async def migrate():
+                  await init_db(engine)
+                  print('Database migration completed')
+
+              asyncio.run(migrate())
+              "
+          envFrom:
+            - configMapRef:
+                name: jackcwf-config
+            - secretRef:
+                name: jackcwf-secret
+
+      # ============================================
+      # Main Container
+      # ============================================
+      containers:
+        - name: jackcwf-backend
+          image: jackcwf-backend:latest
+          imagePullPolicy: Always
+
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+
+          # ============================================
+          # Environment Variables
+          # ============================================
+          envFrom:
+            - configMapRef:
+                name: jackcwf-config
+            - secretRef:
+                name: jackcwf-secret
+
+          # ============================================
+          # Resource Limits
+          # ============================================
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+
+          # ============================================
+          # Health Checks
+          # ============================================
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 5
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 30  # 5 minutes max startup time
+
+          # ============================================
+          # Lifecycle Hooks (Graceful Shutdown)
+          # ============================================
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - sh
+                  - -c
+                  - |
+                    echo "Gracefully shutting down..."
+                    sleep 15
+
+          # ============================================
+          # Volume Mounts
+          # ============================================
+          volumeMounts:
+            - name: app-logs
+              mountPath: /var/log/app
+            - name: supervisor-logs
+              mountPath: /var/log/supervisor
+            - name: tmp-uploads
+              mountPath: /app/tmp/uploads
+
+      # ============================================
+      # Volumes
+      # ============================================
+      volumes:
+        - name: app-logs
+          emptyDir: {}
+        - name: supervisor-logs
+          emptyDir: {}
+        - name: tmp-uploads
+          emptyDir:
+            sizeLimit: 10Gi
+
+      # ============================================
+      # Graceful Termination
+      # ============================================
+      terminationGracePeriodSeconds: 60
+
+      # ============================================
+      # DNS Configuration
+      # ============================================
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+
+---
+# ============================================
+# Service (ClusterIP)
+# ============================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: jackcwf-backend-service
+  namespace: jackcwf
+  labels:
+    app: jackcwf-backend
+spec:
+  type: ClusterIP
+  sessionAffinity: ClientIP  # Sticky sessions
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 3600  # 1 hour session timeout
+
+  ports:
+    - name: http
+      port: 80
+      targetPort: http
+      protocol: TCP
+
+  selector:
+    app: jackcwf-backend
+
+---
+# ============================================
+# Horizontal Pod Autoscaler (HPA)
+# ============================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: jackcwf-backend-hpa
+  namespace: jackcwf
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: jackcwf-backend
+
+  minReplicas: 3
+  maxReplicas: 10
+
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Wait 5 minutes before scaling down
+      policies:
+        - type: Percent
+          value: 50  # Scale down by 50% at most
+          periodSeconds: 60
+        - type: Pods
+          value: 2   # Remove at most 2 pods at a time
+          periodSeconds: 60
+      selectPolicy: Min  # Use the policy that scales down the least
+
+    scaleUp:
+      stabilizationWindowSeconds: 0  # Scale up immediately
+      policies:
+        - type: Percent
+          value: 100  # Double the number of pods
+          periodSeconds: 15
+        - type: Pods
+          value: 4    # Add at most 4 pods at a time
+          periodSeconds: 15
+      selectPolicy: Max  # Use the policy that scales up the most
+
+  metrics:
+    # CPU-based scaling
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70  # Target 70% CPU usage
+
+    # Memory-based scaling
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80  # Target 80% memory usage
+
+    # Custom metric (if using Prometheus adapter)
+    # - type: Pods
+    #   pods:
+    #     metric:
+    #       name: http_requests_per_second
+    #     target:
+    #       type: AverageValue
+    #       averageValue: "1000"
+
+---
+# ============================================
+# Ingress (NGINX Ingress Controller)
+# ============================================
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jackcwf-backend-ingress
+  namespace: jackcwf
+  annotations:
+    # NGINX Ingress Controller
+    kubernetes.io/ingress.class: "nginx"
+
+    # SSL/TLS
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+
+    # Rate limiting
+    nginx.ingress.kubernetes.io/limit-rps: "100"
+    nginx.ingress.kubernetes.io/limit-connections: "20"
+
+    # Timeouts
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+
+    # Buffering
+    nginx.ingress.kubernetes.io/proxy-buffering: "on"
+    nginx.ingress.kubernetes.io/proxy-buffer-size: "4k"
+
+    # CORS (if needed)
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://jackcwf.com,http://localhost:3000"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+
+    # Session affinity
+    nginx.ingress.kubernetes.io/affinity: "cookie"
+    nginx.ingress.kubernetes.io/session-cookie-name: "jackcwf_session"
+    nginx.ingress.kubernetes.io/session-cookie-expires: "3600"
+    nginx.ingress.kubernetes.io/session-cookie-max-age: "3600"
+    nginx.ingress.kubernetes.io/session-cookie-secure: "true"
+    nginx.ingress.kubernetes.io/session-cookie-httponly: "true"
+
+spec:
+  tls:
+    - hosts:
+        - jackcwf.com
+        - www.jackcwf.com
+      secretName: jackcwf-tls
+
+  rules:
+    - host: jackcwf.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jackcwf-backend-service
+                port:
+                  number: 80
+
+    - host: www.jackcwf.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jackcwf-backend-service
+                port:
+                  number: 80
+
+---
+# ============================================
+# PodDisruptionBudget (Ensure availability during updates)
+# ============================================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: jackcwf-backend-pdb
+  namespace: jackcwf
+spec:
+  minAvailable: 2  # Always keep at least 2 pods running
+  selector:
+    matchLabels:
+      app: jackcwf-backend
+
+---
+# ============================================
+# ServiceMonitor (Prometheus Operator)
+# ============================================
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: jackcwf-backend-monitor
+  namespace: jackcwf
+  labels:
+    app: jackcwf-backend
+spec:
+  selector:
+    matchLabels:
+      app: jackcwf-backend
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

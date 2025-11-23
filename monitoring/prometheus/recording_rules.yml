@@ -1,0 +1,239 @@
+# Prometheus Recording Rules
+# Pre-compute frequently used queries for better performance
+
+groups:
+  # ============================================
+  # Cache Performance Metrics
+  # ============================================
+  - name: cache_metrics
+    interval: 30s
+    rules:
+      # Overall cache hit rate
+      - record: cache:hit_rate:5m
+        expr: |
+          sum(rate(llm_cache_hits_total[5m])) /
+          (sum(rate(llm_cache_hits_total[5m])) + sum(rate(llm_cache_misses_total[5m])))
+
+      # Cache hit rate by model
+      - record: cache:hit_rate_by_model:5m
+        expr: |
+          sum(rate(llm_cache_hits_total[5m])) by (model) /
+          (sum(rate(llm_cache_hits_total[5m])) by (model) +
+           sum(rate(llm_cache_misses_total[5m])) by (model))
+
+      # Cache requests per second
+      - record: cache:requests_per_second:5m
+        expr: |
+          sum(rate(llm_cache_hits_total[5m])) +
+          sum(rate(llm_cache_misses_total[5m]))
+
+      # Cache savings (avoided LLM calls)
+      - record: cache:llm_calls_saved:5m
+        expr: sum(rate(llm_cached_responses_served[5m]))
+
+  # ============================================
+  # API Performance Metrics
+  # ============================================
+  - name: api_metrics
+    interval: 30s
+    rules:
+      # Average API latency
+      - record: api:latency_avg:5m
+        expr: |
+          sum(rate(llm_query_latency_ms_sum[5m])) /
+          sum(rate(llm_query_latency_ms_count[5m]))
+
+      # P95 API latency
+      - record: api:latency_p95:5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_query_latency_ms_bucket[5m])) by (le)
+          )
+
+      # P99 API latency
+      - record: api:latency_p99:5m
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(llm_query_latency_ms_bucket[5m])) by (le)
+          )
+
+      # Request rate
+      - record: api:request_rate:5m
+        expr: sum(rate(llm_query_latency_ms_count[5m]))
+
+      # Cached vs uncached latency comparison
+      - record: api:latency_by_cache_status:5m
+        expr: |
+          avg(rate(llm_query_latency_ms_sum[5m])) by (cached) /
+          avg(rate(llm_query_latency_ms_count[5m])) by (cached)
+
+  # ============================================
+  # LLM Component Latency Metrics
+  # ============================================
+  - name: llm_component_metrics
+    interval: 30s
+    rules:
+      # Average embedding latency
+      - record: llm:embedding_latency_avg:5m
+        expr: |
+          sum(rate(llm_embedding_latency_ms_sum[5m])) /
+          sum(rate(llm_embedding_latency_ms_count[5m]))
+
+      # Average vector search latency
+      - record: llm:vector_search_latency_avg:5m
+        expr: |
+          sum(rate(llm_vector_search_latency_ms_sum[5m])) /
+          sum(rate(llm_vector_search_latency_ms_count[5m]))
+
+      # Average generation latency
+      - record: llm:generation_latency_avg:5m
+        expr: |
+          sum(rate(llm_generation_latency_ms_sum[5m])) /
+          sum(rate(llm_generation_latency_ms_count[5m]))
+
+      # P95 generation latency by model
+      - record: llm:generation_latency_p95_by_model:5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_generation_latency_ms_bucket[5m])) by (le, model)
+          )
+
+  # ============================================
+  # Resource Utilization Metrics
+  # ============================================
+  - name: resource_metrics
+    interval: 30s
+    rules:
+      # CPU usage percentage
+      - record: resource:cpu_usage_percent:5m
+        expr: rate(process_cpu_seconds_total[5m]) * 100
+
+      # Memory usage percentage
+      - record: resource:memory_usage_percent:5m
+        expr: |
+          (process_resident_memory_bytes / node_memory_MemTotal_bytes) * 100
+
+      # Open file descriptors percentage
+      - record: resource:open_fds_percent:5m
+        expr: |
+          (process_open_fds / process_max_fds) * 100
+
+      # Disk usage percentage
+      - record: resource:disk_usage_percent:5m
+        expr: |
+          (1 - (node_filesystem_avail_bytes{mountpoint="/"} /
+                node_filesystem_size_bytes{mountpoint="/"})) * 100
+
+  # ============================================
+  # Throughput and Capacity Metrics
+  # ============================================
+  - name: capacity_metrics
+    interval: 60s
+    rules:
+      # Total queries per hour
+      - record: capacity:queries_per_hour:1h
+        expr: sum(increase(llm_query_latency_ms_count[1h]))
+
+      # Cache entries growth rate
+      - record: capacity:cache_growth_per_hour:1h
+        expr: |
+          sum(increase(llm_cache_size_entries[1h])) by (model)
+
+      # Average response size (if tracked)
+      # - record: capacity:avg_response_size:5m
+      #   expr: |
+      #     sum(rate(response_size_bytes_sum[5m])) /
+      #     sum(rate(response_size_bytes_count[5m]))
+
+  # ============================================
+  # Error Rate Metrics
+  # ============================================
+  - name: error_metrics
+    interval: 30s
+    rules:
+      # Overall error rate
+      - record: errors:rate:5m
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) /
+          sum(rate(http_requests_total[5m]))
+
+      # Error rate by endpoint
+      - record: errors:rate_by_endpoint:5m
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m])) by (endpoint) /
+          sum(rate(http_requests_total[5m])) by (endpoint)
+
+      # 4xx client errors
+      - record: errors:client_errors:5m
+        expr: |
+          sum(rate(http_requests_total{status=~"4.."}[5m]))
+
+  # ============================================
+  # Database Performance Metrics
+  # ============================================
+  - name: database_metrics
+    interval: 30s
+    rules:
+      # Average vector search latency
+      - record: db:vector_search_latency_avg:5m
+        expr: |
+          sum(rate(llm_vector_search_latency_ms_sum[5m])) /
+          sum(rate(llm_vector_search_latency_ms_count[5m]))
+
+      # P95 vector search latency
+      - record: db:vector_search_latency_p95:5m
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(llm_vector_search_latency_ms_bucket[5m])) by (le)
+          )
+
+      # Cache distance distribution
+      - record: db:cache_distance_avg:5m
+        expr: |
+          sum(rate(llm_cache_distance_sum[5m])) /
+          sum(rate(llm_cache_distance_count[5m]))
+
+  # ============================================
+  # Cost Optimization Metrics
+  # ============================================
+  - name: cost_metrics
+    interval: 60s
+    rules:
+      # Estimated cost savings from caching (per hour)
+      # Assumes $0.002 per 1K tokens, average 1K tokens per request
+      - record: cost:cache_savings_usd_per_hour:1h
+        expr: |
+          sum(increase(llm_cached_responses_served[1h])) * 0.002
+
+      # LLM API calls per hour
+      - record: cost:llm_calls_per_hour:1h
+        expr: sum(increase(llm_cache_misses_total[1h]))
+
+      # Total requests per hour
+      - record: cost:total_requests_per_hour:1h
+        expr: |
+          sum(increase(llm_cache_hits_total[1h])) +
+          sum(increase(llm_cache_misses_total[1h]))
+
+  # ============================================
+  # SLA Compliance Metrics
+  # ============================================
+  - name: sla_metrics
+    interval: 60s
+    rules:
+      # Percentage of requests under 3s (SLA target)
+      - record: sla:requests_under_3s_percent:5m
+        expr: |
+          (sum(rate(llm_query_latency_ms_bucket{le="3000"}[5m])) /
+           sum(rate(llm_query_latency_ms_count[5m]))) * 100
+
+      # Percentage of requests under 1s (performance target)
+      - record: sla:requests_under_1s_percent:5m
+        expr: |
+          (sum(rate(llm_query_latency_ms_bucket{le="1000"}[5m])) /
+           sum(rate(llm_query_latency_ms_count[5m]))) * 100
+
+      # Uptime percentage (last hour)
+      - record: sla:uptime_percent:1h
+        expr: |
+          avg_over_time(up[1h]) * 100

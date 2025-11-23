@@ -166,55 +166,67 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({ message, isStreaming =
   const isUser = message.role === 'user';
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
+    <div className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} animate-enter group`}>
       <div
-        className={`max-w-2xl ${
-          isUser
-            ? 'bg-blue-600 text-white rounded-lg rounded-tr-none'
-            : 'bg-slate-100 text-slate-900 rounded-lg rounded-tl-none'
-        } px-4 py-3 shadow-sm`}
+        className={`relative max-w-3xl w-full flex gap-4 p-2 rounded-xl transition-colors ${isUser
+            ? ''
+            : 'hover:bg-muted/30'
+          }`}
       >
-        {/* Message Content */}
-        <div className={`text-sm leading-relaxed ${isUser ? 'text-blue-50' : ''}`}>
-          {renderMarkdown(displayedContent || message.content)}
-          {isStreaming && displayIndex < message.content.length && (
-            <span className="inline-block w-2 h-5 ml-1 bg-current opacity-70 animate-pulse">▌</span>
-          )}
+        {/* Avatar */}
+        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center shadow-sm ${isUser
+            ? 'bg-primary text-primary-foreground order-2'
+            : 'bg-white dark:bg-slate-800 border border-border/50 text-foreground order-1'
+          }`}>
+          {isUser ? 'U' : 'AI'}
         </div>
 
-        {/* Tool Calls */}
-        {message.toolCalls && message.toolCalls.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-slate-200">
-            <p className={`text-xs font-semibold mb-2 ${isUser ? 'text-blue-200' : 'text-slate-600'}`}>
-              🔧 Tool Calls
-            </p>
-            <div className="space-y-2">
-              {message.toolCalls.map((toolCall: ToolCall, index: number) => (
-                <ToolRenderer key={`${message.id}-tool-${index}`} toolCall={toolCall} />
-              ))}
-            </div>
+        {/* Content */}
+        <div className={`flex-1 min-w-0 ${isUser ? 'order-1 text-right' : 'order-2'}`}>
+          {/* Name & Time */}
+          <div className={`flex items-center gap-2 mb-1 text-xs text-muted-foreground ${isUser ? 'justify-end' : 'justify-start'}`}>
+            <span className="font-medium text-foreground">{isUser ? 'You' : 'Assistant'}</span>
+            <span>•</span>
+            <span>{formatTime(message.timestamp.toString())}</span>
           </div>
-        )}
 
-        {/* Tool Results */}
-        {message.toolResults && message.toolResults.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-slate-200">
-            <p className={`text-xs font-semibold mb-2 ${isUser ? 'text-blue-200' : 'text-slate-600'}`}>
-              ✓ Tool Results
-            </p>
-            <div className="space-y-1">
-              {message.toolResults.map((result: any, index: number) => (
-                <div key={`${message.id}-result-${index}`} className={`text-xs ${isUser ? 'text-blue-100' : 'text-slate-600'}`}>
-                  <span className="font-mono">{result.toolName}</span>: {JSON.stringify(result).substring(0, 100)}...
-                </div>
-              ))}
-            </div>
+          {/* Message Bubble */}
+          <div className={`text-sm leading-7 prose prose-sm dark:prose-invert max-w-none ${isUser
+              ? 'bg-primary text-primary-foreground px-4 py-2.5 rounded-2xl rounded-tr-sm inline-block text-left shadow-md shadow-primary/10'
+              : 'text-foreground'
+            }`}>
+            {renderMarkdown(displayedContent || message.content)}
+            {isStreaming && displayIndex < message.content.length && (
+              <span className="streaming-cursor"></span>
+            )}
           </div>
-        )}
 
-        {/* Metadata */}
-        <div className={`text-xs mt-2 flex items-center gap-2 ${isUser ? 'text-blue-200' : 'text-slate-500'}`}>
-          {formatTime(message.timestamp.toString())}
+          {/* Tool Calls */}
+          {message.toolCalls && message.toolCalls.length > 0 && (
+            <div className="mt-3 pl-2 border-l-2 border-border/60">
+              <p className="text-xs font-semibold text-muted-foreground mb-2 flex items-center gap-1">
+                <span>🔧</span> Using tools...
+              </p>
+              <div className="space-y-2">
+                {message.toolCalls.map((toolCall: ToolCall, index: number) => (
+                  <ToolRenderer key={`${message.id}-tool-${index}`} toolCall={toolCall} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Tool Results */}
+          {message.toolResults && message.toolResults.length > 0 && (
+            <div className="mt-2 pl-2 border-l-2 border-green-500/30">
+              <div className="space-y-1">
+                {message.toolResults.map((result: any, index: number) => (
+                  <div key={`${message.id}-result-${index}`} className="text-xs text-muted-foreground bg-muted/30 p-2 rounded border border-border/30 font-mono">
+                    <span className="font-semibold text-foreground">{result.toolName}</span>: {JSON.stringify(result).substring(0, 100)}...
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

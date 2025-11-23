@@ -113,22 +113,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
-      {/* 搜索栏和导出按钮 */}
-      <div className="border-b border-slate-200 bg-white px-4 py-3">
-        <div className="max-w-4xl mx-auto flex items-center gap-2">
-          {/* 搜索栏 - 全宽 */}
-          <div className="flex-1">
-            <div className="relative">
+    <div className="flex flex-col h-full relative">
+      {/* 搜索栏和导出按钮 - Floating Header */}
+      <div className="absolute top-0 left-0 right-0 z-10 px-4 py-2 pointer-events-none">
+        <div className="max-w-3xl mx-auto flex items-center gap-2 pointer-events-auto">
+          {/* 搜索栏 */}
+          <div className="flex-1 group">
+            <div className="relative transition-all duration-200 focus-within:scale-[1.01]">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="搜索消息..."
-                className="w-full px-4 py-2 pl-10 pr-4 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Search messages..."
+                className="w-full px-4 py-2 pl-10 pr-4 bg-background/80 backdrop-blur-md border border-border/40 rounded-full text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all placeholder:text-muted-foreground/70"
               />
               <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400"
+                className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -140,43 +140,29 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
+
+              {/* 清除搜索按钮 */}
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
+                >
+                  ✕
+                </button>
+              )}
             </div>
           </div>
-
-          {/* 搜索结果计数 */}
-          {searchQuery && (
-            <div className="text-sm text-slate-600 whitespace-nowrap">
-              {messages.filter((message) => {
-                const query = searchQuery.toLowerCase();
-                const contentMatch = message.content.toLowerCase().includes(query);
-                const roleMatch = message.role.toLowerCase().includes(query);
-                return contentMatch || roleMatch;
-              }).length} 条结果
-            </div>
-          )}
-
-          {/* 清除搜索按钮 */}
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-              title="清除搜索"
-            >
-              ✕
-            </button>
-          )}
 
           {/* 导出按钮 */}
           <button
             onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-            className="px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1"
-            title="导出对话"
+            className="p-2 text-muted-foreground hover:text-foreground bg-background/80 backdrop-blur-md border border-border/40 rounded-full shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+            title="Export Chat"
             disabled={messages.length === 0}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            导出
           </button>
         </div>
       </div>
@@ -185,11 +171,11 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div
         ref={messagesContainerRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto scroll-smooth px-4 py-6 space-y-4"
+        className="flex-1 overflow-y-auto scroll-smooth px-4 py-12 space-y-6"
       >
         {/* 消息列表 */}
         {filteredMessages.length > 0 && (
-          <div className="max-w-4xl mx-auto space-y-4">
+          <div className="max-w-3xl mx-auto space-y-8">
             {filteredMessages.map((message: ChatMessageType, index: number) => (
               <ChatMessage
                 key={message.id || index}
@@ -202,40 +188,44 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {/* 无搜索结果提示 */}
         {searchQuery && filteredMessages.length === 0 && (
-          <div className="max-w-4xl mx-auto flex items-center justify-center py-8">
-            <div className="text-center text-slate-500">
-              <div className="text-3xl mb-2">🔍</div>
-              <p>未找到匹配 "{searchQuery}" 的消息</p>
+          <div className="max-w-3xl mx-auto flex items-center justify-center py-12">
+            <div className="text-center text-muted-foreground">
+              <div className="text-4xl mb-4 opacity-50">🔍</div>
+              <p className="text-lg font-medium">No matches found</p>
+              <p className="text-sm opacity-70">Try a different search term</p>
             </div>
           </div>
         )}
 
         {/* Loading Indicator */}
         {isLoading && (
-          <div className="max-w-4xl mx-auto flex items-center gap-3 py-4">
-            <div className="flex gap-1">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+          <div className="max-w-3xl mx-auto py-4 pl-4">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+              </div>
+              <span className="text-xs font-medium uppercase tracking-wider opacity-70">Thinking</span>
             </div>
-            <span className="text-sm text-slate-600">AI is thinking...</span>
           </div>
         )}
 
         {/* Typing Indicator */}
-        <TypingIndicator typingUsers={typingUsers} />
+        <div className="max-w-3xl mx-auto">
+          <TypingIndicator typingUsers={typingUsers} />
+        </div>
 
         {/* Scroll Anchor */}
-        <div ref={messagesEndRef} />
+        <div ref={messagesEndRef} className="h-4" />
       </div>
 
       {/* 错误提示 */}
       {error && (
-        <div className="border-t border-slate-200 bg-red-50 px-4 py-3 flex items-start gap-3">
-          <div className="text-red-600 text-xl">⚠️</div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-red-900 text-sm">错误</h3>
-            <p className="text-red-700 text-sm mt-1">{error}</p>
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-50 animate-enter">
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg shadow-lg backdrop-blur-md flex items-center gap-3">
+            <span className="text-lg">⚠️</span>
+            <p className="font-medium text-sm">{error}</p>
           </div>
         </div>
       )}

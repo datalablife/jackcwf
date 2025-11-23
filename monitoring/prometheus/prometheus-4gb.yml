@@ -1,0 +1,55 @@
+# Prometheus 4GB 内存轻量版配置
+# 核心优化：
+# - 采集间隔从 15s 改为 30s（减少内存占用）
+# - 保留时间从 30d 改为 7d（减少磁盘占用）
+# - 告警规则从 47 个减少到 10 个关键告警
+# - 预期内存占用：100-150MB（vs 250-300MB）
+
+global:
+  scrape_interval: 30s          # 改为 30s（减少采集频率）
+  evaluation_interval: 30s      # 改为 30s
+  external_labels:
+    monitor: 'langchain-ai-4gb'
+    environment: 'production'
+
+rule_files:
+  - 'alerts-4gb.yml'           # 仅加载 10 个关键告警
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['localhost:9093']
+
+# 简化的 Scrape 配置（仅关键指标）
+scrape_configs:
+  - job_name: 'fastapi-backend'
+    static_configs:
+      - targets: ['localhost:8000']
+    scrape_interval: 60s        # FastAPI 每 60s 采集一次
+    scrape_timeout: 10s
+    metrics_path: '/metrics'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 60s
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['localhost:9100']
+    scrape_interval: 60s
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['localhost:6379']
+    scrape_interval: 60s
+
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['localhost:5432']
+    scrape_interval: 60s
+
+# 移除以下以节省内存：
+# - cadvisor （删除，改用 docker stats）
+# - blackbox exporter （删除）
+# - custom exporters （删除）

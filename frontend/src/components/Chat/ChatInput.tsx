@@ -129,73 +129,69 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit)} className="border-t border-slate-200 bg-white p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Input Wrapper */}
-        <div className="relative flex gap-2">
-          {/* Textarea */}
-          <div className="flex-1 relative">
-            <textarea
-              ref={(el) => {
-                textareaRef.current = el;
-                if (registerRef) registerRef(el);
-              }}
-              {...registerProps}
-              placeholder={placeholder}
-              disabled={isDisabled}
-              onKeyDown={handleKeyDown}
-              className={`w-full px-4 py-3 border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
-                errors.message ? 'border-red-500' : 'border-slate-200'
-              } ${isDisabled ? 'bg-slate-50 cursor-not-allowed opacity-60' : 'bg-white'}`}
-              rows={1}
-              style={{ maxHeight: '200px', minHeight: '44px' }}
-            />
+    <form onSubmit={handleSubmit(handleFormSubmit)} className="w-full">
+      <div className="relative bg-background/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-lg transition-all duration-200 focus-within:shadow-xl focus-within:border-primary/30 focus-within:ring-1 focus-within:ring-primary/20">
+        {/* Textarea */}
+        <textarea
+          ref={(el) => {
+            textareaRef.current = el;
+            if (registerRef) registerRef(el);
+          }}
+          {...registerProps}
+          placeholder={placeholder}
+          disabled={isDisabled}
+          onKeyDown={handleKeyDown}
+          className={`w-full px-4 py-4 pr-14 bg-transparent border-none resize-none focus:outline-none focus:ring-0 transition-colors placeholder:text-muted-foreground/50 text-base leading-relaxed ${isDisabled ? 'cursor-not-allowed opacity-60' : ''
+            }`}
+          rows={1}
+          style={{ maxHeight: '200px', minHeight: '60px' }}
+        />
 
-            {/* Character Count */}
-            <div
-              className={`absolute bottom-3 right-3 text-xs font-medium ${
-                isOverLimit ? 'text-red-600' : 'text-slate-500'
-              }`}
-            >
-              {charCount} / {maxLength}
-            </div>
-          </div>
+        {/* Bottom Actions */}
+        <div className="absolute bottom-2 right-2 flex items-center gap-2">
+          {/* Character Count (Only show when typing) */}
+          {charCount > 0 && (
+            <span className={`text-[10px] font-medium transition-colors mr-2 ${isOverLimit ? 'text-destructive' : 'text-muted-foreground/50'
+              }`}>
+              {charCount}/{maxLength}
+            </span>
+          )}
 
           {/* Send Button */}
           <button
             type="submit"
-            disabled={isDisabled}
-            className={`px-4 py-3 rounded-lg font-medium transition-all ${
-              isDisabled
-                ? 'bg-slate-200 text-slate-500 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
-            }`}
+            disabled={isDisabled || !messageValue.trim()}
+            className={`p-2 rounded-xl transition-all duration-200 flex items-center justify-center ${isDisabled || !messageValue.trim()
+                ? 'bg-muted text-muted-foreground cursor-not-allowed opacity-50'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md hover:-translate-y-0.5 active:translate-y-0'
+              }`}
             title="Send message (Cmd/Ctrl + Enter)"
           >
             {isSubmitting || isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span className="hidden sm:inline">Sending</span>
-              </div>
+              <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              <span className="text-lg">⬆️</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
             )}
           </button>
         </div>
+      </div>
 
-        {/* Error Messages */}
-        {errors.message && (
-          <div className="mt-2 text-sm text-red-600 flex items-center gap-2">
-            <span>⚠️</span>
-            {errors.message.message}
-          </div>
-        )}
-
-        {/* Helper Text */}
-        <div className="mt-2 text-xs text-slate-500 flex gap-4">
-          <span>Shift + Enter for line break</span>
-          <span>Cmd/Ctrl + Enter to send</span>
+      {/* Error Messages */}
+      {errors.message && (
+        <div className="mt-2 text-xs text-destructive flex items-center gap-1.5 px-2 animate-enter">
+          <span>⚠️</span>
+          {errors.message.message}
         </div>
+      )}
+
+      {/* Helper Text */}
+      <div className="mt-2 px-2 flex justify-between items-center text-[10px] text-muted-foreground/50 select-none">
+        <div className="flex gap-3">
+          <span>Shift + Enter for new line</span>
+        </div>
+        <span>Cmd + Enter to send</span>
       </div>
     </form>
   );

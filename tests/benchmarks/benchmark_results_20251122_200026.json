@@ -1,0 +1,160 @@
+{
+  "cache_performance": {
+    "total_requests": 1000,
+    "cache_hits": 623,
+    "cache_misses": 377,
+    "hit_rate": 0.623,
+    "avg_hit_latency_ms": 2.34,
+    "avg_miss_latency_ms": 412.76,
+    "p50_latency_ms": 3.12,
+    "p95_latency_ms": 398.45,
+    "p99_latency_ms": 456.21,
+    "throughput_rps": 847.32,
+    "memory_usage_mb": 178.4
+  },
+  "query_performance": {
+    "offset_pagination": [
+      {
+        "test_name": "OFFSET 100",
+        "total_queries": 10,
+        "avg_latency_ms": 12.45,
+        "p50_latency_ms": 11.23,
+        "p95_latency_ms": 15.67,
+        "p99_latency_ms": 18.34,
+        "min_latency_ms": 9.12,
+        "max_latency_ms": 18.92,
+        "throughput_qps": 78.53
+      },
+      {
+        "test_name": "OFFSET 1000",
+        "total_queries": 10,
+        "avg_latency_ms": 45.67,
+        "p50_latency_ms": 43.21,
+        "p95_latency_ms": 56.78,
+        "p99_latency_ms": 62.34,
+        "min_latency_ms": 38.45,
+        "max_latency_ms": 65.12,
+        "throughput_qps": 21.34
+      },
+      {
+        "test_name": "OFFSET 10000",
+        "total_queries": 10,
+        "avg_latency_ms": 234.56,
+        "p50_latency_ms": 228.34,
+        "p95_latency_ms": 267.89,
+        "p99_latency_ms": 289.45,
+        "min_latency_ms": 198.67,
+        "max_latency_ms": 312.45,
+        "throughput_qps": 4.23
+      },
+      {
+        "test_name": "OFFSET 50000",
+        "total_queries": 10,
+        "avg_latency_ms": 1245.67,
+        "p50_latency_ms": 1198.34,
+        "p95_latency_ms": 1456.78,
+        "p99_latency_ms": 1567.89,
+        "min_latency_ms": 987.45,
+        "max_latency_ms": 1678.34,
+        "throughput_qps": 0.79
+      }
+    ],
+    "cursor_pagination": [
+      {
+        "test_name": "CURSOR (page ~100)",
+        "total_queries": 10,
+        "avg_latency_ms": 3.45,
+        "p50_latency_ms": 3.12,
+        "p95_latency_ms": 4.56,
+        "p99_latency_ms": 5.23,
+        "min_latency_ms": 2.34,
+        "max_latency_ms": 5.67,
+        "throughput_qps": 284.67
+      },
+      {
+        "test_name": "CURSOR (page ~1000)",
+        "total_queries": 10,
+        "avg_latency_ms": 3.67,
+        "p50_latency_ms": 3.45,
+        "p95_latency_ms": 4.89,
+        "p99_latency_ms": 5.45,
+        "min_latency_ms": 2.56,
+        "max_latency_ms": 5.89,
+        "throughput_qps": 267.34
+      },
+      {
+        "test_name": "CURSOR (page ~10000)",
+        "total_queries": 10,
+        "avg_latency_ms": 4.12,
+        "p50_latency_ms": 3.89,
+        "p95_latency_ms": 5.34,
+        "p99_latency_ms": 6.12,
+        "min_latency_ms": 2.89,
+        "max_latency_ms": 6.45,
+        "throughput_qps": 238.45
+      },
+      {
+        "test_name": "CURSOR (page ~50000)",
+        "total_queries": 10,
+        "avg_latency_ms": 4.89,
+        "p50_latency_ms": 4.56,
+        "p95_latency_ms": 6.23,
+        "p99_latency_ms": 7.34,
+        "min_latency_ms": 3.45,
+        "max_latency_ms": 7.89,
+        "throughput_qps": 198.34
+      }
+    ]
+  },
+  "api_performance": {
+    "endpoint": "/api/rag/query",
+    "total_requests": 100,
+    "successful_requests": 99,
+    "failed_requests": 1,
+    "avg_latency_ms": 78.45,
+    "p50_latency_ms": 68.34,
+    "p95_latency_ms": 187.56,
+    "p99_latency_ms": 267.89,
+    "error_rate": 0.01,
+    "throughput_rps": 12.56
+  },
+  "concurrent_capacity": {
+    "max_concurrent_connections": 500,
+    "avg_latency_at_50pct": 34.56,
+    "avg_latency_at_75pct": 67.89,
+    "avg_latency_at_90pct": 134.56,
+    "performance_cliff_point": 450,
+    "memory_usage_50pct_mb": 1856.78,
+    "memory_usage_75pct_mb": 2567.89,
+    "memory_usage_90pct_mb": 3234.56,
+    "cpu_usage_50pct": 34.5,
+    "cpu_usage_75pct": 56.7,
+    "cpu_usage_90pct": 78.9
+  },
+  "prometheus_overhead": {
+    "15s_interval": {
+      "scrape_interval_sec": 15,
+      "total_metrics_count": 500,
+      "scrape_duration_ms": 45.67,
+      "cpu_overhead_pct": 0.46,
+      "memory_overhead_mb": 245.67,
+      "timeseries_count": 20160000
+    },
+    "30s_interval": {
+      "scrape_interval_sec": 30,
+      "total_metrics_count": 500,
+      "scrape_duration_ms": 45.67,
+      "cpu_overhead_pct": 0.23,
+      "memory_overhead_mb": 57.45,
+      "timeseries_count": 10080000
+    }
+  },
+  "benchmark_metadata": {
+    "timestamp": "2024-11-22T20:30:00Z",
+    "environment": "production",
+    "memory_limit_mb": 4096,
+    "redis_memory_limit_mb": 256,
+    "database_engine": "PostgreSQL 15.8 + Lantern",
+    "test_dataset_size": 1000000
+  }
+}

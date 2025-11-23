@@ -1,0 +1,91 @@
+# Traefik Dynamic Configuration
+# This file defines middlewares, services, and additional routers
+
+http:
+  # ============================================
+  # Middlewares
+  # ============================================
+  middlewares:
+    # Rate limiting
+    ratelimit:
+      rateLimit:
+        average: 100
+        burst: 200
+        period: 1s
+
+    # Retry mechanism
+    retry:
+      attempts: 3
+      initialInterval: 100ms
+
+    # Circuit breaker
+    circuitbreaker:
+      expression: "NetworkErrorRatio() > 0.3 || ResponseCodeRatio(500, 600, 0, 600) > 0.3"
+
+    # Custom headers
+    custom-headers:
+      headers:
+        customResponseHeaders:
+          X-Powered-By: "Jackcwf Platform"
+          X-Frame-Options: "SAMEORIGIN"
+          X-Content-Type-Options: "nosniff"
+          X-XSS-Protection: "1; mode=block"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+
+    # CORS (if needed)
+    cors:
+      headers:
+        accessControlAllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - PATCH
+          - OPTIONS
+        accessControlAllowOriginList:
+          - "http://localhost:3000"
+          - "http://localhost:5173"
+          - "https://jackcwf.com"
+        accessControlAllowHeaders:
+          - "*"
+        accessControlExposeHeaders:
+          - "*"
+        accessControlAllowCredentials: true
+        accessControlMaxAge: 3600
+
+    # IP whitelist (optional)
+    # ipwhitelist:
+    #   ipStrategy:
+    #     depth: 1
+    #   sourceRange:
+    #     - "127.0.0.1/32"
+    #     - "192.168.1.0/24"
+
+  # ============================================
+  # Services
+  # ============================================
+  services:
+    # Manual service definition (if not using Docker labels)
+    # jackcwf-backend-manual:
+    #   loadBalancer:
+    #     servers:
+    #       - url: "http://web-1:80"
+    #       - url: "http://web-2:80"
+    #       - url: "http://web-3:80"
+    #     sticky:
+    #       cookie:
+    #         name: "jackcwf_session"
+    #         secure: true
+    #         httpOnly: true
+    #     healthCheck:
+    #       path: "/health"
+    #       interval: "30s"
+    #       timeout: "10s"
+    #       scheme: "http"
+
+# ============================================
+# TCP Configuration (if needed)
+# ============================================
+tcp:
+  routers: {}
+  services: {}

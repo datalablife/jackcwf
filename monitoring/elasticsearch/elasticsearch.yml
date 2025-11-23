@@ -1,0 +1,57 @@
+# Elasticsearch Configuration
+
+cluster.name: "langchain-ai-cluster"
+node.name: "langchain-ai-node-1"
+network.host: 0.0.0.0
+
+# Path settings
+path.data: /usr/share/elasticsearch/data
+path.logs: /usr/share/elasticsearch/logs
+
+# Memory settings
+bootstrap.memory_lock: true
+
+# Discovery settings for single node
+discovery.type: single-node
+
+# Security settings (disabled for simplicity - enable in production)
+xpack.security.enabled: false
+xpack.security.enrollment.enabled: false
+xpack.security.http.ssl.enabled: false
+xpack.security.transport.ssl.enabled: false
+
+# Monitoring
+xpack.monitoring.collection.enabled: true
+
+# Index lifecycle management
+xpack.ilm.enabled: true
+
+# Index settings
+action.auto_create_index: true
+action.destructive_requires_name: true
+
+# Query settings
+indices.query.bool.max_clause_count: 4096
+
+# Fielddata cache
+indices.fielddata.cache.size: 40%
+
+# Circuit breaker settings
+indices.breaker.total.limit: 70%
+indices.breaker.fielddata.limit: 40%
+indices.breaker.request.limit: 40%
+
+# Thread pool settings
+thread_pool:
+  write:
+    queue_size: 1000
+  search:
+    queue_size: 1000
+
+# Slow log settings
+index.search.slowlog.threshold.query.warn: 10s
+index.search.slowlog.threshold.query.info: 5s
+index.search.slowlog.threshold.query.debug: 2s
+index.indexing.slowlog.threshold.index.warn: 10s
+index.indexing.slowlog.threshold.index.info: 5s
+index.indexing.slowlog.threshold.index.debug: 2s

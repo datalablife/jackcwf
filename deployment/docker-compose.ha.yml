@@ -1,0 +1,195 @@
+# High-Availability Docker Compose Configuration
+# Multi-replica FastAPI backend with Traefik load balancing
+#
+# Architecture:
+# - 3 x Backend replicas (web-1, web-2, web-3)
+# - 1 x Traefik load balancer (reverse proxy)
+# - 1 x PostgreSQL database (external Coolify instance)
+# - Shared volumes for logs and monitoring
+#
+# Usage:
+#   docker-compose -f deployment/docker-compose.ha.yml up -d --scale web=3
+
+version: '3.8'
+
+services:
+  # ============================================
+  # Traefik Load Balancer
+  # ============================================
+  traefik:
+    image: traefik:v2.10
+    container_name: jackcwf-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - ./traefik/certs:/certs:ro
+      - traefik-logs:/var/log/traefik
+    networks:
+      - app-network
+    environment:
+      - TZ=Asia/Shanghai
+    labels:
+      - "traefik.enable=true"
+      # Dashboard access
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=auth"
+      # Basic auth (username: admin, password: change_me)
+      # Generate: htpasswd -nb admin change_me
+      - "traefik.http.middlewares.auth.basicauth.users=admin:$$apr1$$8evjzzvl$$zKEfxZCdLPcv2Z4gzFkLJ1"
+    healthcheck:
+      test: ["CMD", "traefik", "healthcheck", "--ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ============================================
+  # Backend Application (3 replicas)
+  # ============================================
+  web:
+    image: jackcwf-backend:latest
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      # Shared logs across replicas
+      - app-logs:/var/log/app
+      - supervisor-logs:/var/log/supervisor
+      - app-data:/app/logs
+      # Mount .env file
+      - ./.env:/app/.env:ro
+    environment:
+      # Database connection (Coolify PostgreSQL)
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_URL_SYNC=${DATABASE_URL_SYNC}
+
+      # Application configuration
+      - APP_NAME=${APP_NAME:-AI Data Analyzer}
+      - APP_VERSION=${APP_VERSION:-1.0.0}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - ENVIRONMENT=production
+
+      # LLM API Keys
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
+
+      # CORS Configuration
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:8000}
+
+      # Encryption
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+
+      # File Upload
+      - MAX_FILE_SIZE=${MAX_FILE_SIZE:-536870912}
+      - UPLOAD_DIR=/app/tmp/uploads
+
+      # Monitoring
+      - ENABLE_MONITORING=${ENABLE_MONITORING:-true}
+      - MONITORING_INTERVAL_SECONDS=${MONITORING_INTERVAL_SECONDS:-10}
+
+      # Health check timeout
+      - HEALTH_CHECK_TIMEOUT_MS=${HEALTH_CHECK_TIMEOUT_MS:-2000}
+
+      # Worker configuration (per replica)
+      - UVICORN_WORKERS=${UVICORN_WORKERS:-2}
+
+      # Graceful shutdown
+      - GRACEFUL_SHUTDOWN_TIMEOUT=${GRACEFUL_SHUTDOWN_TIMEOUT:-30}
+
+      # Timezone
+      - TZ=Asia/Shanghai
+
+    labels:
+      # Enable Traefik
+      - "traefik.enable=true"
+
+      # HTTP Router
+      - "traefik.http.routers.jackcwf-app.rule=Host(`jackcwf.localhost`) || Host(`jackcwf.com`)"
+      - "traefik.http.routers.jackcwf-app.entrypoints=web"
+      - "traefik.http.routers.jackcwf-app.service=jackcwf-backend"
+
+      # HTTPS Router (if using SSL)
+      - "traefik.http.routers.jackcwf-app-secure.rule=Host(`jackcwf.localhost`) || Host(`jackcwf.com`)"
+      - "traefik.http.routers.jackcwf-app-secure.entrypoints=websecure"
+      - "traefik.http.routers.jackcwf-app-secure.tls=true"
+      - "traefik.http.routers.jackcwf-app-secure.service=jackcwf-backend"
+
+      # Service definition
+      - "traefik.http.services.jackcwf-backend.loadbalancer.server.port=80"
+
+      # Load balancing configuration
+      - "traefik.http.services.jackcwf-backend.loadbalancer.sticky.cookie=true"
+      - "traefik.http.services.jackcwf-backend.loadbalancer.sticky.cookie.name=jackcwf_session"
+      - "traefik.http.services.jackcwf-backend.loadbalancer.sticky.cookie.secure=true"
+      - "traefik.http.services.jackcwf-backend.loadbalancer.sticky.cookie.httpOnly=true"
+
+      # Health check
+      - "traefik.http.services.jackcwf-backend.loadbalancer.healthcheck.path=/health"
+      - "traefik.http.services.jackcwf-backend.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.jackcwf-backend.loadbalancer.healthcheck.timeout=10s"
+      - "traefik.http.services.jackcwf-backend.loadbalancer.healthcheck.scheme=http"
+
+      # Middleware
+      - "traefik.http.routers.jackcwf-app.middlewares=compression,security-headers"
+      - "traefik.http.routers.jackcwf-app-secure.middlewares=compression,security-headers"
+
+      # Compression middleware
+      - "traefik.http.middlewares.compression.compress=true"
+
+      # Security headers middleware
+      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.X-Content-Type-Options=nosniff"
+      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.X-Frame-Options=SAMEORIGIN"
+      - "traefik.http.middlewares.security-headers.headers.customResponseHeaders.X-XSS-Protection=1; mode=block"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        delay: 30s
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  app-logs:
+    driver: local
+  supervisor-logs:
+    driver: local
+  app-data:
+    driver: local
+  traefik-logs:
+    driver: local

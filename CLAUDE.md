@@ -541,3 +541,5 @@ poetry lock
 ### 项目启动 FastAPI 应用
 
  source .venv/bin/activate && python -m uvicorn src.main:app --host 0.0.0.0 --port 8000
+
+ cd /mnt/d/工作区/云开发/working/frontend && npm run dev -- --host 0.0.0.0

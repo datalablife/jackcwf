@@ -1,0 +1,188 @@
+# AlertManager Configuration
+
+global:
+  resolve_timeout: 5m
+  # SMTP settings (for email alerts)
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@jackcwf.com'
+  smtp_auth_username: 'alertmanager@jackcwf.com'
+  smtp_auth_password: 'your_password_here'
+  smtp_require_tls: true
+
+# Route tree for alerts
+route:
+  # Default receiver
+  receiver: 'default'
+
+  # Group alerts by these labels
+  group_by: ['alertname', 'component', 'severity']
+
+  # How long to wait before sending initial notification
+  group_wait: 30s
+
+  # How long to wait before sending notification about new alerts added to group
+  group_interval: 5m
+
+  # How long to wait before re-sending a notification
+  repeat_interval: 4h
+
+  # Child routes (specific routing rules)
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      repeat_interval: 1h
+      continue: true  # Also send to default receiver
+
+    # Warning alerts - less urgent
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      repeat_interval: 12h
+
+    # Database alerts - specific team
+    - match:
+        component: database
+      receiver: 'database-team'
+
+    # Infrastructure alerts
+    - match:
+        component: infrastructure
+      receiver: 'ops-team'
+
+    # Business metrics alerts
+    - match:
+        component: business
+      receiver: 'business-team'
+
+# Inhibition rules (suppress alerts)
+inhibit_rules:
+  # Suppress warning if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'instance']
+
+  # Suppress individual replica alerts if multiple replicas are down
+  - source_match:
+      alertname: 'MultipleReplicasDown'
+    target_match:
+      alertname: 'ServiceDown'
+    equal: ['component']
+
+# Alert receivers
+receivers:
+  # ============================================
+  # Default Receiver (Slack)
+  # ============================================
+  - name: 'default'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#alerts'
+        title: 'Jackcwf Platform Alert'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Severity:* {{ .Labels.severity }}
+          *Component:* {{ .Labels.component }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+        send_resolved: true
+
+  # ============================================
+  # Critical Alerts (PagerDuty + Slack)
+  # ============================================
+  - name: 'critical-alerts'
+    pagerduty_configs:
+      - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+        description: '{{ .CommonAnnotations.summary }}'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#critical-alerts'
+        color: 'danger'
+        title: 'CRITICAL: Jackcwf Platform'
+        text: |
+          <!channel>
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Component:* {{ .Labels.component }}
+          *Summary:* {{ .Annotations.summary }}
+          *Description:* {{ .Annotations.description }}
+          {{ end }}
+
+  # ============================================
+  # Warning Alerts (Slack only)
+  # ============================================
+  - name: 'warning-alerts'
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#warnings'
+        color: 'warning'
+        title: 'Warning: Jackcwf Platform'
+        text: |
+          {{ range .Alerts }}
+          *Alert:* {{ .Labels.alertname }}
+          *Component:* {{ .Labels.component }}
+          *Summary:* {{ .Annotations.summary }}
+          {{ end }}
+
+  # ============================================
+  # Database Team (Email + Slack)
+  # ============================================
+  - name: 'database-team'
+    email_configs:
+      - to: 'database-team@jackcwf.com'
+        headers:
+          Subject: 'Database Alert: {{ .CommonAnnotations.summary }}'
+        html: |
+          <h2>Database Alert</h2>
+          {{ range .Alerts }}
+          <p>
+            <strong>Alert:</strong> {{ .Labels.alertname }}<br>
+            <strong>Severity:</strong> {{ .Labels.severity }}<br>
+            <strong>Summary:</strong> {{ .Annotations.summary }}<br>
+            <strong>Description:</strong> {{ .Annotations.description }}
+          </p>
+          {{ end }}
+    slack_configs:
+      - api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+        channel: '#database-alerts'
+
+  # ============================================
+  # Operations Team (Email + PagerDuty)
+  # ============================================
+  - name: 'ops-team'
+    email_configs:
+      - to: 'ops-team@jackcwf.com'
+    pagerduty_configs:
+      - service_key: 'YOUR_PAGERDUTY_OPS_KEY'
+
+  # ============================================
+  # Business Team (Email only)
+  # ============================================
+  - name: 'business-team'
+    email_configs:
+      - to: 'business-team@jackcwf.com'
+        headers:
+          Subject: 'Business Metrics Alert: {{ .CommonAnnotations.summary }}'
+
+  # ============================================
+  # Webhook Receiver (Custom integrations)
+  # ============================================
+  - name: 'webhook'
+    webhook_configs:
+      - url: 'http://your-webhook-endpoint.com/alerts'
+        send_resolved: true
+        http_config:
+          basic_auth:
+            username: 'webhook_user'
+            password: 'webhook_password'
+
+# Templates for alert formatting
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'

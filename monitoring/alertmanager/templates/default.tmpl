@@ -1,0 +1,77 @@
+{{ define "slack.default.title" }}
+[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .GroupLabels.alertname }}
+{{ end }}
+
+{{ define "slack.default.text" }}
+{{ range .Alerts }}
+*Alert:* {{ .Labels.alertname }}
+*Severity:* {{ .Labels.severity }}
+*Component:* {{ .Labels.component }}
+*Summary:* {{ .Annotations.summary }}
+*Description:* {{ .Annotations.description }}
+{{ if .Annotations.runbook_url }}*Runbook:* {{ .Annotations.runbook_url }}{{ end }}
+*Instance:* {{ .Labels.instance }}
+*Started:* {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+{{ if .EndsAt }}*Ended:* {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}{{ end }}
+---
+{{ end }}
+{{ end }}
+
+{{ define "email.default.html" }}
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .alert { margin: 20px 0; padding: 15px; border-left: 4px solid #ff0000; background-color: #fff3f3; }
+        .alert.warning { border-left-color: #ff9800; background-color: #fff8e1; }
+        .alert.info { border-left-color: #2196f3; background-color: #e3f2fd; }
+        .alert.resolved { border-left-color: #4caf50; background-color: #f1f8e9; }
+        .label { font-weight: bold; color: #333; }
+        .value { color: #666; }
+        .timestamp { font-size: 0.9em; color: #999; }
+    </style>
+</head>
+<body>
+    <h2>{{ .GroupLabels.alertname }}</h2>
+    <p><strong>Status:</strong> {{ .Status | toUpper }}</p>
+
+    {{ range .Alerts }}
+    <div class="alert {{ if eq .Labels.severity "critical" }}critical{{ else if eq .Labels.severity "warning" }}warning{{ else }}info{{ end }}">
+        <h3>{{ .Annotations.summary }}</h3>
+
+        <p><span class="label">Description:</span> <span class="value">{{ .Annotations.description }}</span></p>
+
+        <p><span class="label">Severity:</span> <span class="value">{{ .Labels.severity }}</span></p>
+
+        <p><span class="label">Component:</span> <span class="value">{{ .Labels.component }}</span></p>
+
+        {{ if .Labels.instance }}
+        <p><span class="label">Instance:</span> <span class="value">{{ .Labels.instance }}</span></p>
+        {{ end }}
+
+        {{ if .Annotations.runbook_url }}
+        <p><span class="label">Runbook:</span> <a href="{{ .Annotations.runbook_url }}">{{ .Annotations.runbook_url }}</a></p>
+        {{ end }}
+
+        <p class="timestamp">
+            <span class="label">Started:</span> {{ .StartsAt.Format "2006-01-02 15:04:05 MST" }}
+            {{ if .EndsAt }}
+            <br><span class="label">Ended:</span> {{ .EndsAt.Format "2006-01-02 15:04:05 MST" }}
+            {{ end }}
+        </p>
+    </div>
+    {{ end }}
+
+    <hr>
+    <p style="font-size: 0.9em; color: #999;">
+        View in <a href="{{ .ExternalURL }}">Prometheus</a> |
+        <a href="http://localhost:3001">Grafana</a>
+    </p>
+</body>
+</html>
+{{ end }}
+
+{{ define "email.default.subject" }}
+[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }} - {{ .GroupLabels.cluster }}
+{{ end }}

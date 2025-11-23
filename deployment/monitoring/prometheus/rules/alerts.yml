@@ -1,0 +1,303 @@
+# Prometheus Alerting Rules for Jackcwf Platform
+
+groups:
+  # ============================================
+  # Service Availability Alerts
+  # ============================================
+  - name: service_availability
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up{job="jackcwf-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Service {{ $labels.instance }} is down"
+          description: "{{ $labels.instance }} has been down for more than 2 minutes."
+
+      - alert: HighErrorRate
+        expr: |
+          rate(http_requests_total{status=~"5.."}[5m])
+          /
+          rate(http_requests_total[5m])
+          > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: MultipleReplicasDown
+        expr: count(up{job="jackcwf-backend"} == 0) >= 2
+        for: 1m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Multiple backend replicas are down"
+          description: "{{ $value }} backend replicas are currently down. Service availability is at risk."
+
+  # ============================================
+  # Performance Alerts
+  # ============================================
+  - name: performance
+    interval: 30s
+    rules:
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }}s (threshold: 1s)."
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 3.0
+        for: 5m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Very high latency detected"
+          description: "99th percentile response time is {{ $value }}s (threshold: 3s)."
+
+      - alert: LowThroughput
+        expr: |
+          sum(rate(http_requests_total[5m])) < 10
+        for: 10m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "Low request throughput"
+          description: "Request rate is {{ $value }} req/s, which is unusually low."
+
+  # ============================================
+  # Resource Usage Alerts
+  # ============================================
+  - name: resource_usage
+    interval: 30s
+    rules:
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value | humanize }}% (threshold: 80%)."
+
+      - alert: HighMemoryUsage
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanize }}% (threshold: 85%)."
+
+      - alert: ContainerMemoryLimit
+        expr: |
+          (container_memory_usage_bytes / container_spec_memory_limit_bytes) * 100 > 90
+        for: 2m
+        labels:
+          severity: critical
+          component: container
+        annotations:
+          summary: "Container {{ $labels.name }} is near memory limit"
+          description: "Container memory usage is {{ $value | humanize }}% of limit."
+
+      - alert: DiskSpaceLow
+        expr: |
+          (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Available disk space is {{ $value | humanize }}% (threshold: 15%)."
+
+  # ============================================
+  # Database Alerts
+  # ============================================
+  - name: database
+    interval: 30s
+    rules:
+      - alert: DatabaseConnectionPoolExhausted
+        expr: |
+          db_connection_pool_active >= db_connection_pool_max * 0.9
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool near limit"
+          description: "Active connections: {{ $value }}, using > 90% of pool capacity."
+
+      - alert: SlowDatabaseQueries
+        expr: |
+          rate(db_query_duration_seconds_sum[5m]) / rate(db_query_duration_seconds_count[5m]) > 1.0
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query duration is {{ $value }}s (threshold: 1s)."
+
+      - alert: HighDatabaseErrorRate
+        expr: |
+          rate(db_errors_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "High database error rate"
+          description: "Database errors occurring at {{ $value }} per second."
+
+  # ============================================
+  # Cache Performance Alerts
+  # ============================================
+  - name: cache_performance
+    interval: 30s
+    rules:
+      - alert: LowCacheHitRatio
+        expr: |
+          cache_hit_ratio < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Low cache hit ratio"
+          description: "Cache hit ratio is {{ $value | humanizePercentage }} (threshold: 50%)."
+
+      - alert: CacheMemoryHigh
+        expr: |
+          cache_memory_usage_bytes > 1e9  # 1GB
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "High cache memory usage"
+          description: "Cache is using {{ $value | humanize }}B of memory."
+
+  # ============================================
+  # Load Balancer Alerts
+  # ============================================
+  - name: load_balancer
+    interval: 30s
+    rules:
+      - alert: TraefikDown
+        expr: up{job="traefik"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: load_balancer
+        annotations:
+          summary: "Traefik load balancer is down"
+          description: "Traefik has been down for more than 1 minute. No traffic routing!"
+
+      - alert: UnevenLoadDistribution
+        expr: |
+          stddev(rate(http_requests_total{job="jackcwf-backend"}[5m])) /
+          avg(rate(http_requests_total{job="jackcwf-backend"}[5m])) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+          component: load_balancer
+        annotations:
+          summary: "Uneven load distribution across replicas"
+          description: "Load distribution variance is high. Check load balancer configuration."
+
+  # ============================================
+  # Container Health Alerts
+  # ============================================
+  - name: container_health
+    interval: 30s
+    rules:
+      - alert: ContainerRestarting
+        expr: |
+          rate(container_restart_count[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          component: container
+        annotations:
+          summary: "Container {{ $labels.name }} is restarting"
+          description: "Container has restarted {{ $value }} times in the last 5 minutes."
+
+      - alert: PodCrashLooping
+        expr: |
+          rate(kube_pod_container_status_restarts_total[15m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: kubernetes
+        annotations:
+          summary: "Pod {{ $labels.pod }} is crash looping"
+          description: "Pod has restarted {{ $value }} times in the last 15 minutes."
+
+  # ============================================
+  # API Rate Limiting Alerts
+  # ============================================
+  - name: rate_limiting
+    interval: 30s
+    rules:
+      - alert: HighRateLimitRejects
+        expr: |
+          rate(http_requests_total{status="429"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: middleware
+        annotations:
+          summary: "High rate of rate-limited requests"
+          description: "{{ $value }} requests per second are being rate limited."
+
+  # ============================================
+  # Business Metrics Alerts
+  # ============================================
+  - name: business_metrics
+    interval: 60s
+    rules:
+      - alert: NoUserActivity
+        expr: |
+          rate(http_requests_total{path=~"/api/.*"}[10m]) == 0
+        for: 30m
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "No user activity detected"
+          description: "No API requests in the last 30 minutes. Possible outage or issue."
+
+      - alert: HighCost
+        expr: |
+          increase(llm_api_cost_total[1h]) > 10
+        for: 0m
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "High LLM API cost"
+          description: "LLM API costs exceeded $10 in the last hour."

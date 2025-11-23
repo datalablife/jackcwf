@@ -1,0 +1,430 @@
+{
+  "dashboard": {
+    "title": "LangChain AI - Application Overview",
+    "tags": ["langchain", "ai", "rag", "cache"],
+    "timezone": "browser",
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Health Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"fastapi-backend\"}",
+            "legendFormat": "Backend Status",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 1, "color": "green" }
+              ]
+            },
+            "mappings": [
+              { "value": 1, "text": "UP" },
+              { "value": 0, "text": "DOWN" }
+            ]
+          }
+        },
+        "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 }
+      },
+      {
+        "id": 2,
+        "title": "Cache Hit Rate",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "cache:hit_rate:5m * 100",
+            "legendFormat": "Hit Rate %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 30, "color": "yellow" },
+                { "value": 60, "color": "green" }
+              ]
+            }
+          }
+        },
+        "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 }
+      },
+      {
+        "id": 3,
+        "title": "API P95 Latency",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "api:latency_p95:5m",
+            "legendFormat": "P95 Latency",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms",
+            "min": 0,
+            "max": 5000,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 1000, "color": "yellow" },
+                { "value": 3000, "color": "red" }
+              ]
+            }
+          }
+        },
+        "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 }
+      },
+      {
+        "id": 4,
+        "title": "Request Rate",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(rate(llm_query_latency_ms_count[5m]))",
+            "legendFormat": "Requests/sec",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 2
+          }
+        },
+        "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 }
+      },
+      {
+        "id": 5,
+        "title": "CPU Usage",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "resource:cpu_usage_percent:5m",
+            "legendFormat": "CPU %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 70, "color": "yellow" },
+                { "value": 90, "color": "red" }
+              ]
+            }
+          }
+        },
+        "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 }
+      },
+      {
+        "id": 6,
+        "title": "Memory Usage",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "resource:memory_usage_percent:5m",
+            "legendFormat": "Memory %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "green" },
+                { "value": 70, "color": "yellow" },
+                { "value": 90, "color": "red" }
+              ]
+            }
+          }
+        },
+        "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 }
+      },
+      {
+        "id": 7,
+        "title": "API Latency Over Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(llm_query_latency_ms_bucket[5m])) by (le))",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(llm_query_latency_ms_bucket[5m])) by (le))",
+            "legendFormat": "P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(llm_query_latency_ms_bucket[5m])) by (le))",
+            "legendFormat": "P99",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms"
+          }
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 }
+      },
+      {
+        "id": 8,
+        "title": "Cache Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(llm_cache_hits_total[5m]))",
+            "legendFormat": "Cache Hits",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(llm_cache_misses_total[5m]))",
+            "legendFormat": "Cache Misses",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 }
+      },
+      {
+        "id": 9,
+        "title": "Component Latency Breakdown",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "llm:embedding_latency_avg:5m",
+            "legendFormat": "Embedding",
+            "refId": "A"
+          },
+          {
+            "expr": "llm:vector_search_latency_avg:5m",
+            "legendFormat": "Vector Search",
+            "refId": "B"
+          },
+          {
+            "expr": "llm:generation_latency_avg:5m",
+            "legendFormat": "LLM Generation",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ms"
+          }
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 }
+      },
+      {
+        "id": 10,
+        "title": "Cache Size and Hit Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(llm_cache_size_entries) by (model)",
+            "legendFormat": "{{model}} - Entries",
+            "refId": "A"
+          },
+          {
+            "expr": "cache:hit_rate_by_model:5m * 100",
+            "legendFormat": "{{model}} - Hit Rate %",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          { "format": "short", "label": "Entries" },
+          { "format": "percent", "label": "Hit Rate" }
+        ],
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 }
+      },
+      {
+        "id": 11,
+        "title": "Request Rate by Endpoint",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m])) by (endpoint)",
+            "legendFormat": "{{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps"
+          }
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 }
+      },
+      {
+        "id": 12,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m]))",
+            "legendFormat": "5xx Errors",
+            "refId": "A"
+          },
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"4..\"}[5m]))",
+            "legendFormat": "4xx Errors",
+            "refId": "B"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "ops"
+          }
+        },
+        "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 }
+      },
+      {
+        "id": 13,
+        "title": "Resource Utilization Trends",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "resource:cpu_usage_percent:5m",
+            "legendFormat": "CPU %",
+            "refId": "A"
+          },
+          {
+            "expr": "resource:memory_usage_percent:5m",
+            "legendFormat": "Memory %",
+            "refId": "B"
+          },
+          {
+            "expr": "resource:open_fds_percent:5m",
+            "legendFormat": "Open Files %",
+            "refId": "C"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "max": 100
+          }
+        },
+        "gridPos": { "h": 8, "w": 24, "x": 0, "y": 28 }
+      },
+      {
+        "id": 14,
+        "title": "Cache Table Size",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(llm_cache_table_size_bytes)",
+            "legendFormat": "Cache Size",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bytes",
+            "decimals": 2
+          }
+        },
+        "gridPos": { "h": 4, "w": 6, "x": 0, "y": 36 }
+      },
+      {
+        "id": 15,
+        "title": "Total Cache Entries",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(llm_cache_size_entries)",
+            "legendFormat": "Total Entries",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          }
+        },
+        "gridPos": { "h": 4, "w": 6, "x": 6, "y": 36 }
+      },
+      {
+        "id": 16,
+        "title": "Cost Savings (Hourly)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "cost:cache_savings_usd_per_hour:1h",
+            "legendFormat": "Savings USD",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "currencyUSD",
+            "decimals": 2
+          }
+        },
+        "gridPos": { "h": 4, "w": 6, "x": 12, "y": 36 }
+      },
+      {
+        "id": 17,
+        "title": "SLA Compliance (<3s)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sla:requests_under_3s_percent:5m",
+            "legendFormat": "SLA Met %",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "decimals": 2,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "value": 0, "color": "red" },
+                { "value": 95, "color": "yellow" },
+                { "value": 99, "color": "green" }
+              ]
+            }
+          }
+        },
+        "gridPos": { "h": 4, "w": 6, "x": 18, "y": 36 }
+      }
+    ],
+    "schemaVersion": 36,
+    "version": 1
+  }
+}

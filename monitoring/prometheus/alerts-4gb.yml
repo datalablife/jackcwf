@@ -1,0 +1,136 @@
+# Alerts for 4GB Memory Lightweight Setup
+# 仅保留 10 个关键告警（从 47 个减少）
+# 预期内存占用：最小化
+
+groups:
+  - name: critical-4gb
+    interval: 30s
+    rules:
+      # 1. 服务可用性告警
+      - alert: ServiceDown
+        expr: up{job="fastapi-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "FastAPI service is DOWN"
+          description: "FastAPI backend has been unreachable for 2 minutes"
+
+      # 2. 内存告警（4GB 服务器最关键）
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "Available memory < 15% (危险)"
+          description: "可用内存不足，即将触发 OOM"
+
+      # 3. API 延迟告警
+      - alert: HighAPILatency
+        expr: histogram_quantile(0.95, rate(api_request_duration_seconds[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "API P95 latency > 2s"
+          description: "API 响应变慢，可能需要扩展或优化"
+
+      # 4. 缓存命中率告警
+      - alert: LowCacheHitRate
+        expr: (redis_cache_hits_total / (redis_cache_hits_total + redis_cache_misses_total)) < 0.4
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Cache hit rate < 40%"
+          description: "Redis 缓存效率低，检查配置或数据访问模式"
+
+      # 5. 数据库连接池告警
+      - alert: HighDatabaseConnections
+        expr: pg_stat_activity_count > 80
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "PostgreSQL connections > 80"
+          description: "数据库连接接近限制，可能导致连接排队"
+
+      # 6. Redis 内存告警
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / 268435456 > 0.9  # 256MB * 0.9
+        for: 5m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "Redis memory > 90% of 256MB"
+          description: "Redis 即将触发 eviction，建议清理或增加容量"
+
+      # 7. 磁盘空间告警
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs"} / node_filesystem_size_bytes) < 0.1
+        for: 10m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "Disk space < 10%"
+          description: "磁盘空间即将用尽"
+
+      # 8. 数据库查询性能告警
+      - alert: SlowDatabaseQueries
+        expr: pg_stat_statements_mean_exec_time > 1000  # >1s
+        for: 10m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Database queries > 1s (average)"
+          description: "数据库查询变慢，需要查询优化"
+
+      # 9. 容器 OOM Kill 告警
+      - alert: ContainerOOMKills
+        expr: rate(container_last_seen_timestamp{status="oom-killed"}[1h]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "Container being killed by OOM"
+          description: "容器因内存不足被 Linux 杀死，需要增加内存或优化"
+
+      # 10. 网络 I/O 告警
+      - alert: HighNetworkIO
+        expr: rate(node_network_receive_bytes_total[5m]) > 100000000  # >100MB/s
+        for: 5m
+        labels:
+          severity: warning
+          category: network
+        annotations:
+          summary: "High network I/O > 100MB/s"
+          description: "网络 I/O 突增，检查是否有大文件传输或 DDoS"
+
+  - name: recording-4gb
+    interval: 60s  # 改为 60s
+    rules:
+      # 缓存命中率（分钟级）
+      - record: redis:cache_hit_rate:1m
+        expr: rate(redis_cache_hits_total[1m]) / (rate(redis_cache_hits_total[1m]) + rate(redis_cache_misses_total[1m]))
+
+      # API 响应时间 P95（分钟级）
+      - record: api:request_latency_p95:1m
+        expr: histogram_quantile(0.95, rate(api_request_duration_seconds[1m]))
+
+      # API 响应时间 P99（分钟级）
+      - record: api:request_latency_p99:1m
+        expr: histogram_quantile(0.99, rate(api_request_duration_seconds[1m]))
+
+      # 内存使用百分比
+      - record: node:memory_usage_percent:1m
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100
