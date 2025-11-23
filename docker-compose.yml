@@ -25,6 +25,7 @@ services:
 
   fastapi-backend:
     image: ghcr.io/datalablife/jackcwf:latest
+    pull_policy: always
     container_name: fastapi-backend
     restart: unless-stopped
     ports:
