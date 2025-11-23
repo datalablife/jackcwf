@@ -138,7 +138,7 @@ docker pull最新镜像
 
 ### 验证更新（用户操作）
 ```
-访问应用: https://pgvctor.jackcwf.com
+访问应用: https://chat.jackcwf.com
   ↓
 清除浏览器缓存: Ctrl+Shift+Delete
   ↓
@@ -188,7 +188,7 @@ docker pull ghcr.io/datalablife/jackcwf:latest
 ```
 
 ### 4. 访问应用
-- 应用地址: https://pgvctor.jackcwf.com
+- 应用地址: https://chat.jackcwf.com
 - 清除缓存: Ctrl+Shift+Delete
 - 硬刷新: Ctrl+Shift+R
 
