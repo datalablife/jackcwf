@@ -13,6 +13,7 @@ on:
       - 'docker-compose.yml'
       - 'monitoring/**'
       - 'pyproject.toml'
+      - 'scripts/*.sh'
       - '.github/workflows/build-and-deploy.yml'
   workflow_dispatch:
 
