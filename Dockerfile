@@ -28,6 +28,11 @@ FROM node:20-slim AS frontend-builder
 
 WORKDIR /build
 
+# Cache breaker: Forces frontend rebuild on every Docker build
+# This ensures latest frontend code is always included
+ARG BUILD_TIMESTAMP=default
+RUN echo "Frontend build triggered at: ${BUILD_TIMESTAMP}"
+
 # Copy frontend files
 COPY frontend/package*.json ./
 RUN npm ci --legacy-peer-deps
