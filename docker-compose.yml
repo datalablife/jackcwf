@@ -1,6 +1,7 @@
 # Docker Compose 4GB 轻量版部署
 # 仅包含必需的 5 个服务
 # 预期内存占用：3.0-3.5GB
+# Force rebuild trigger - 2025-11-24 01:50 UTC
 
 version: '3.8'
 
