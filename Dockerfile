@@ -4,7 +4,7 @@
 # ============================================
 # Stage 1: Build Backend Dependencies
 # ============================================
-FROM python:3.12-slim AS backend-builder
+FROM python:3.14-slim AS backend-builder
 
 WORKDIR /build
 
@@ -51,7 +51,7 @@ RUN test -f /build/dist/index.html || \
 # ============================================
 # Stage 3: Final Production Image
 # ============================================
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
