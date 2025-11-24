@@ -24,7 +24,7 @@ RUN pip install uv && \
 # ============================================
 # Stage 2: Build Frontend
 # ============================================
-FROM node:20-slim AS frontend-builder
+FROM node:25-slim AS frontend-builder
 
 WORKDIR /build
 
