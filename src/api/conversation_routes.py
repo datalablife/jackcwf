@@ -23,7 +23,7 @@ from src.schemas.conversation_schema import (
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/conversations", tags=["Conversations"])
+router = APIRouter(prefix="/api/v1/conversations", tags=["Conversations"])
 
 
 # ============================================================================
@@ -70,6 +70,11 @@ async def get_current_user(request: Request) -> str:
     """Extract user ID from request via FastAPI dependency injection."""
     user_id = getattr(request.state, "user_id", None)
     if not user_id:
+        # Development mode: use default user if no authentication
+        import os
+        if os.getenv("ENVIRONMENT") != "production":
+            return "dev-user-default"
+
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not authenticated",

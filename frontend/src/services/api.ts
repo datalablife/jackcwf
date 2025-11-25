@@ -105,7 +105,7 @@ export const conversationApi = {
   getConversations: () =>
     request('GET', '/conversations'),
 
-  createConversation: (data: { title: string }) =>
+  createConversation: (data: { title: string; system_prompt?: string; model?: string; metadata?: unknown }) =>
     request('POST', '/conversations', data),
 
   getConversation: (id: number) =>

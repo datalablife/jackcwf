@@ -25,6 +25,7 @@
     "framer-motion": "^11.11.0",
     "html2pdf.js": "^0.12.1",
     "jspdf": "^3.0.4",
+    "marked": "^17.0.1",
     "prismjs": "^1.29.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

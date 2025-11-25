@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
@@ -135,7 +136,7 @@ app = FastAPI(
 )
 
 # Configure CORS
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:8000").split(",")
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174,http://localhost:3000,http://localhost:8000").split(",")
 ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS]
 
 app.add_middleware(
@@ -343,11 +344,23 @@ async def updated_lifespan(app: FastAPI):
 
 if __name__ == "__main__":
     import uvicorn
+    from src.infrastructure.port_manager import ensure_port_available
+
+    # Get configuration
+    host = "0.0.0.0"
+    port = int(os.getenv("PORT", "8000"))
+
+    # Check and clean port if necessary
+    if not ensure_port_available(port=port, host=host):
+        logger.error("❌ Cannot start: port is not available")
+        sys.exit(1)
+
+    logger.info(f"✅ Starting server on {host}:{port}")
 
     uvicorn.run(
         "src.main:app",
-        host="0.0.0.0",
-        port=int(os.getenv("PORT", "8000")),
+        host=host,
+        port=port,
         reload=os.getenv("ENV", "development") == "development",
         log_level=os.getenv("LOG_LEVEL", "info").lower(),
     )

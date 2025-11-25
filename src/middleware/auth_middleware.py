@@ -35,6 +35,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         "/ws",  # WebSocket endpoint - has its own authentication via user_id
     }
 
+    # Development: Allow conversation operations without authentication
+    # These should be protected with proper auth in production
+    PUBLIC_PATHS = {
+        "/api/v1/conversations",  # Allow creating conversations
+        "/api/v1/health",  # Health check
+    }
+
     def __init__(self, app):
         """Initialize middleware with configuration."""
         super().__init__(app)
@@ -68,6 +75,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         Raises:
             JSONResponse: 401 for authentication failures
         """
+        # Allow CORS preflight requests (OPTIONS) to pass through
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         # Skip authentication for public endpoints
         if self._is_public_endpoint(request.url.path):
             return await call_next(request)
@@ -239,6 +250,13 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         # WebSocket endpoints - authenticated by the websocket handler itself
         if path.startswith("/ws"):
             return True
+
+        # Development: Allow conversation operations without authentication
+        # Match both /api/conversations and /api/v1/conversations (and /api/v2, etc.)
+        if "/conversations" in path or "/health" in path:
+            # Only allow if it's a valid API path
+            if path.startswith("/api/"):
+                return True
 
         return False
 

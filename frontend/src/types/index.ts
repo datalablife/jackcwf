@@ -138,3 +138,49 @@ export interface ChatUIState {
   sidebarOpen: boolean;
   debugMode?: boolean;
 }
+
+// WebSocket types
+export type WebSocketEventType =
+  | 'message'
+  | 'typing_start'
+  | 'typing_stop'
+  | 'presence_update'
+  | 'connection_status'
+  | 'error'
+  | 'reconnect'
+  | 'ping'
+  | 'pong'
+  | 'agent_thinking'
+  | 'tool_call'
+  | 'tool_result'
+  | 'response'
+  | 'complete'
+  | 'ready';
+
+export interface WebSocketEvent {
+  type: WebSocketEventType;
+  data: Record<string, unknown>;
+  timestamp: Date;
+}
+
+export interface PresenceUser {
+  userId: string;
+  username: string;
+  status: 'online' | 'typing' | 'away' | 'offline';
+  lastSeenAt: Date;
+}
+
+export interface TypingState {
+  userId: string;
+  username: string;
+  threadId: string;
+  startedAt: Date;
+}
+
+export interface WebSocketConnectionState {
+  isConnected: boolean;
+  isConnecting: boolean;
+  lastConnectedAt?: Date;
+  reconnectAttempts: number;
+  error?: string;
+}

@@ -12,6 +12,11 @@ export const useAutoTitle = () => {
     conversationId: string,
     messageContent: string
   ) => {
+    // TODO: Implement backend endpoint for title generation
+    // This feature is currently disabled as the backend endpoint doesn't exist yet
+    // When implemented, uncomment the code below and add the POST /conversations/{id}/generate-title endpoint
+
+    /*
     try {
       // Call API to generate title from message content
       const response = await conversationApi.generateTitle(conversationId, messageContent);
@@ -25,29 +30,47 @@ export const useAutoTitle = () => {
       console.error('Failed to generate title:', error);
       // Silently fail - keep the default title
     }
+    */
   }, [updateThread]);
 
   return { generateTitleFromContent };
 };
-export const useTypingIndicator = (threadId: string, wsUrl: string = 'ws://localhost:8000/ws') => {
+export const useTypingIndicator = (threadId: string, conversationId?: string) => {
   const { addTypingUser, removeTypingUser, clearTypingUsers } = useChatStore();
   const wsRef = useRef<WebSocket | null>(null);
   const typingTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
   const TYPING_TIMEOUT_MS = 5000; // Auto-clear typing indicator after 5 seconds
 
   useEffect(() => {
+    // Only connect if we have a conversation ID
+    if (!conversationId) return;
+
     try {
-      const token = localStorage.getItem('auth_token');
-      const url = `${wsUrl}${wsUrl.includes('?') ? '&' : '?'}token=${token}`;
-      wsRef.current = new WebSocket(url);
+      // Build WebSocket URL dynamically based on current location
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      const wsUrl = `${protocol}//${host}/ws/conversations/${conversationId}`;
+
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        // Send initial connection message with user_id (required by backend)
+        const userId = localStorage.getItem('user_id') || `user_${Date.now()}`;
+        wsRef.current?.send(JSON.stringify({
+          type: 'initial',
+          user_id: userId,
+          username: 'Anonymous',
+          conversation_id: conversationId,
+        }));
+      };
 
       wsRef.current.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
 
-          // Handle typing events
-          if (data.type === 'user_typing' && data.threadId === threadId) {
-            const userName = data.userName || 'User';
+          // Handle typing events from backend
+          if (data.type === 'typing_start' && data.data?.userId) {
+            const userName = data.data.username || 'User';
 
             // Add typing user
             addTypingUser(threadId, userName);
@@ -73,7 +96,7 @@ export const useTypingIndicator = (threadId: string, wsUrl: string = 'ws://local
       };
 
       return () => {
-        if (wsRef.current) {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
           wsRef.current.close();
         }
         // Clear all timeouts
@@ -82,7 +105,7 @@ export const useTypingIndicator = (threadId: string, wsUrl: string = 'ws://local
     } catch (error) {
       console.error('Failed to setup typing indicator:', error);
     }
-  }, [threadId, wsUrl, addTypingUser, removeTypingUser]);
+  }, [threadId, conversationId, addTypingUser, removeTypingUser]);
 
   return { clearTypingUsers };
 };
@@ -98,6 +121,9 @@ export const useChat = (threadId: string) => {
     async (content: string) => {
       if (!content.trim()) return;
 
+      // Extract conversation ID from threadId (remove 'thread_' prefix if present)
+      const conversationId = threadId.startsWith('thread_') ? threadId.replace('thread_', '') : threadId;
+
       // Add user message to local state
       const userMessage: ChatMessage = {
         id: `msg-${Date.now()}`,
@@ -111,13 +137,13 @@ export const useChat = (threadId: string) => {
 
       try {
         // Call streaming API
-        const response = await fetch(`/api/v1/conversations/${threadId}/stream`, {
+        const response = await fetch(`/api/v1/conversations/${conversationId}/stream`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
           },
-          body: JSON.stringify({ content }),
+          body: JSON.stringify({ content, role: 'user' }),
         });
 
         if (!response.ok) {
@@ -194,8 +220,13 @@ export const useThread = () => {
   const createThread = useCallback(async (title?: string) => {
     setIsLoading(true);
     try {
-      // Call API to create conversation/thread
-      const response = await conversationApi.createConversation({ title: title || 'New Conversation' });
+      // Call API to create conversation/thread with required fields
+      const response = await conversationApi.createConversation({
+        title: title || 'New Conversation',
+        system_prompt: 'You are a helpful assistant.',
+        model: 'claude-3-5-sonnet-20241022',
+        metadata: {}
+      });
       if (response.error) throw new Error(response.error.message);
       return response.data;
     } finally {
@@ -322,13 +353,16 @@ export const useStreaming = () => {
     onError?: (error: Error) => void
   ) => {
     try {
-      const response = await fetch(`/api/v1/conversations/${threadId}/stream`, {
+      // Extract conversation ID from threadId (remove 'thread_' prefix if present)
+      const conversationId = threadId.startsWith('thread_') ? threadId.replace('thread_', '') : threadId;
+
+      const response = await fetch(`/api/v1/conversations/${conversationId}/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${localStorage.getItem('auth_token') || ''}`,
         },
-        body: JSON.stringify({ content: message }),
+        body: JSON.stringify({ content: message, role: 'user' }),
       });
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);

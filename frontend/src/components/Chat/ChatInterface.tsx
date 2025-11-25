@@ -16,7 +16,7 @@
  * ```
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useChatStore, useThreadsStore } from '../../store';
 import { ChatMessage } from './ChatMessage';
 import { TypingIndicator } from './TypingIndicator';
@@ -55,10 +55,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   // 从存储获取消息和输入用户
-  const messages = useChatStore((state) => state.messages[threadId] || []);
+  const allMessages = useChatStore((state) => state.messages);
   const searchQuery = useChatStore((state) => state.searchQuery);
   const { setSearchQuery } = useChatStore();
-  const typingUsers = useChatStore((state) => Array.from(state.typingUsers[threadId] || []));
+  const allTypingUsers = useChatStore((state) => state.typingUsers);
+
+  // Memoize messages to avoid creating new array references on every render
+  const messages = useMemo(
+    () => allMessages[threadId] || [],
+    [allMessages, threadId]
+  );
+
+  // Memoize typing users to ensure stable reference
+  const typingUsers = useMemo(
+    () => allTypingUsers[threadId] ? Array.from(allTypingUsers[threadId]) : [],
+    [allTypingUsers, threadId]
+  );
 
   // 获取对话标题
   const threads = useThreadsStore((state) => state.threads);

@@ -52,15 +52,20 @@ export default function App() {
         setIsInitializing(true);
         const response = await conversationApi.getConversations();
 
-        if (response.data && Array.isArray(response.data)) {
-          const mappedThreads: typeof threads = (response.data as any[]).map((conv: any) => ({
+        // Handle both response.data (direct array) and response.data.items (ConversationListResponse)
+        const conversations = Array.isArray(response.data)
+          ? response.data
+          : (response.data?.items || []);
+
+        if (conversations && Array.isArray(conversations)) {
+          const mappedThreads: typeof threads = (conversations as any[]).map((conv: any) => ({
             threadId: `thread_${conv.id}`,
             conversationId: conv.id,
             title: conv.title || 'Untitled Conversation',
             createdAt: new Date(conv.created_at),
             updatedAt: new Date(conv.updated_at),
             messageCount: conv.message_count || 0,
-            metadata: conv.meta || {}
+            metadata: conv.metadata || conv.meta || {}
           }));
 
           setThreads(mappedThreads);
@@ -83,10 +88,13 @@ export default function App() {
 
   // Handle create new thread
   const handleCreateThread = async () => {
+    console.log('[DEBUG] handleCreateThread called, current threads:', threads.length);
     try {
       const newThreadData = await createThread(`New Conversation ${threads.length + 1}`);
+      console.log('[DEBUG] createThread response:', newThreadData);
       if (newThreadData && typeof newThreadData === 'object') {
         const convData = newThreadData as any;
+        console.log('[DEBUG] convData:', convData);
         const newThread = {
           threadId: `thread_${convData.id}`,
           conversationId: convData.id,
@@ -96,12 +104,16 @@ export default function App() {
           messageCount: 0,
           metadata: convData.meta || {}
         };
+        console.log('[DEBUG] newThread created:', newThread);
         setThreads([...threads, newThread]);
         setSelectedThread(newThread.threadId);
         setChatError(null);
+        console.log('[DEBUG] State updated, new threads count:', threads.length + 1);
+      } else {
+        console.log('[DEBUG] newThreadData is not valid object:', newThreadData);
       }
     } catch (error) {
-      console.error('Failed to create thread:', error);
+      console.error('[DEBUG] Failed to create thread:', error);
       setChatError('Failed to create new conversation');
     }
   };

@@ -1,4 +1,7 @@
 assets/external/
+
+# Claude code 安装包
+node_modules/
 # Python 编译文件
 *.py[cod]
 __pycache__/
@@ -91,4 +94,3 @@ docker-compose.override.yml
 /frontend/.env*
 /backend/.env*
 /code_review_crew/.env*
-

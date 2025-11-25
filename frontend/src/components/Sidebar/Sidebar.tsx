@@ -129,7 +129,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="px-3 pb-2">
         <button
           onClick={handleCreateClick}
-          disabled={isCreating || isLoading}
+          disabled={isCreating}
           className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-sm font-medium text-foreground text-left group"
         >
           <div className="w-7 h-7 rounded-full bg-black dark:bg-white flex items-center justify-center text-white dark:text-black">

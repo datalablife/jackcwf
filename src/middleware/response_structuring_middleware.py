@@ -47,6 +47,12 @@ class ResponseStructuringMiddleware(BaseHTTPMiddleware):
         "/api/redoc",
     }
 
+    # Paths that should skip response structuring (to avoid Content-Length issues)
+    EXEMPT_PATH_PREFIXES = {
+        "/api/v1/conversations",  # Conversation endpoints already properly formatted
+        "/api/v1/threads",        # Thread endpoints already properly formatted
+    }
+
     def __init__(self, app):
         """Initialize middleware."""
         super().__init__(app)
@@ -292,5 +298,15 @@ class ResponseStructuringMiddleware(BaseHTTPMiddleware):
 
         if path.startswith("/api/docs") or path.startswith("/api/openapi"):
             return True
+
+        # Check exempt path prefixes
+        exempt_prefixes = {
+            "/api/v1/conversations",
+            "/api/v1/threads",
+        }
+
+        for prefix in exempt_prefixes:
+            if path.startswith(prefix):
+                return True
 
         return False
