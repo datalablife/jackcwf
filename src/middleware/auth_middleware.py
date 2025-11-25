@@ -32,6 +32,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
         "/api/openapi.json",
         "/api/redoc",
         "/api/v1/docs",
+        "/ws",  # WebSocket endpoint - has its own authentication via user_id
     }
 
     def __init__(self, app):
@@ -233,6 +234,10 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
 
         # Check path prefixes
         if path.startswith("/api/docs") or path.startswith("/api/openapi"):
+            return True
+
+        # WebSocket endpoints - authenticated by the websocket handler itself
+        if path.startswith("/ws"):
             return True
 
         return False
